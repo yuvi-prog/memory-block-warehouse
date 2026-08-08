@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Block — Warehouse 3D</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0c;font-family:'Segoe UI',system-ui,sans-serif;color:#fff;overflow:hidden;height:100vh}
+#cc{position:fixed;inset:0}
+canvas{display:block;width:100%!important;height:100%!important}
+#hud-top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:linear-gradient(to bottom,rgba(0,0,0,.85),transparent);pointer-events:none;z-index:20}
+#hud-logo{font-size:13px;font-weight:800;letter-spacing:2px;color:#f5c800;text-transform:uppercase}
+#hud-loc{font-size:12px;color:rgba(255,255,255,.65)}
+#hud-mode{font-size:11px;color:rgba(245,200,0,.8);background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.25);border-radius:20px;padding:3px 12px}
+#xhair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:20}
+#stats-bar{position:fixed;top:48px;left:18px;display:flex;gap:8px;z-index:20;pointer-events:none;flex-wrap:wrap}
+.sp{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:3px 11px;font-size:11px;color:rgba(255,255,255,.6);backdrop-filter:blur(8px)}
+.sp span{font-weight:700;margin-right:3px}
+#tooltip{position:fixed;display:none;pointer-events:none;z-index:30;transform:translate(-50%,-115%)}
+#tt-inner{background:#f5c800;color:#1a1200;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:800;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+#tt-sub{font-size:10px;font-weight:500;color:#5a4200;margin-top:2px}
+#tt-arr{width:0;height:0;margin:0 auto;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #f5c800}
+#info-card{position:fixed;bottom:76px;left:16px;background:rgba(5,5,10,.94);border:1px solid rgba(245,200,0,.3);border-radius:14px;padding:13px 15px;min-width:220px;display:none;z-index:20;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#card-sec{font-size:10px;font-weight:800;letter-spacing:2.5px;color:#f5c800;margin-bottom:2px}
+#card-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:9px;line-height:1.2}
+.cr{display:flex;justify-content:space-between;gap:14px;font-size:12px;margin-bottom:4px}
+.cl{color:rgba(255,255,255,.4)}.cv{font-weight:600;color:#fff}
+#card-bar-w{height:5px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:10px;overflow:hidden}
+#card-bar{height:5px;border-radius:3px;transition:width .4s,background .4s}
+#card-edit{width:100%;margin-top:10px;background:#f5c800;color:#1a1200;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;pointer-events:all}
+#card-edit:hover{background:#ffd700}
+#legend{position:fixed;top:58px;right:16px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 13px;backdrop-filter:blur(10px);z-index:20;pointer-events:none}
+#legend-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,.35);margin-bottom:8px;text-transform:uppercase}
+.lr{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.72);margin-bottom:5px}
+.lr:last-child{margin-bottom:0}
+.ld{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+#mm-wrap{position:fixed;bottom:76px;right:16px;z-index:20}
+#mm{display:block;border:1px solid rgba(255,255,255,.15);border-radius:10px;cursor:crosshair;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#mm-lbl{font-size:9px;color:rgba(255,255,255,.3);text-align:center;margin-top:4px;letter-spacing:.5px}
+#ctrl{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,12,.96);border-top:1px solid rgba(255,255,255,.07);padding:9px 14px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;backdrop-filter:blur(10px);z-index:20}
+.cb{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8);border-radius:8px;padding:6px 13px;font-size:12px;cursor:pointer;transition:all .15s;user-select:none;font-family:inherit}
+.cb:hover{background:rgba(255,255,255,.14)}
+.cb.act{background:rgba(245,200,0,.2);border-color:rgba(245,200,0,.45);color:#f5c800}
+.cs{width:1px;height:24px;background:rgba(255,255,255,.08);margin:0 2px}
+#chint{font-size:11px;color:rgba(255,255,255,.22);margin-left:auto}
+#bulk-bar{position:fixed;bottom:52px;left:0;right:0;background:rgba(245,200,0,.97);color:#1a1200;padding:8px 18px;display:none;align-items:center;gap:10px;z-index:25;font-size:13px;font-weight:600}
+#bulk-bar input{padding:5px 9px;border-radius:6px;border:none;font-size:13px;background:rgba(255,255,255,.85)}
+.ba{background:#1a1200;color:#f5c800;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer}
+.bc{background:rgba(0,0,0,.15);color:#1a1200;border:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer}
+/* modals */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(6px)}
+.modal-ov.open{display:flex}
+#edit-box{background:#111318;border:1px solid rgba(245,200,0,.3);border-radius:16px;padding:24px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.8)}
+#edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+#edit-grid .ef-full{grid-column:1/-1}
+#edit-grid .ef-full{grid-column:1/-1}
+.ef-sku-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0 12px}
+#edit-box h3{font-size:16px;font-weight:700;margin-bottom:3px}
+.esub{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:18px}
+.ef{margin-bottom:12px}
+.ef label{display:block;font-size:11px;font-weight:700;letter-spacing:.8px;color:rgba(245,200,0,.65);margin-bottom:5px}
+.ef input{width:100%;background:#1a1d24;border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit}
+.ef input:focus{outline:none;border-color:rgba(245,200,0,.4)}
+.ebtns{display:flex;gap:10px;margin-top:16px}
+.esave{flex:1;background:#f5c800;color:#1a1200;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.esave:hover{background:#ffd700}
+.ecancel{background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;font-family:inherit}
+/* audit */
+#audit-box{background:#fff;border-radius:14px;width:780px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;color:#111}
+.ah{padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.ah h3{font-size:16px;font-weight:700}.ah button{background:none;border:none;font-size:20px;cursor:pointer;color:#666}
+#audit-scroll{overflow-y:auto;flex:1}
+#audit-scroll table{width:100%;border-collapse:collapse;font-size:12px}
+#audit-scroll th{position:sticky;top:0;background:#f8f8f8;padding:9px 12px;text-align:left;color:#666;font-weight:600;border-bottom:1px solid #eee}
+#audit-scroll td{padding:7px 12px;border-bottom:1px solid #f0f0f0}
+/* storage room modal */
+#storage-box{background:#111318;border:1px solid rgba(120,80,255,.4);border-radius:16px;padding:24px;width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.9)}
+#storage-box h3{font-size:16px;font-weight:700;margin-bottom:4px;color:#fff}
+#storage-box .esub{margin-bottom:16px}
+.si-row{display:grid;grid-template-columns:28px 2fr 120px 80px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;font-size:12px}
+.si-row input{background:#1a1d24;border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:6px 9px;font-size:12px;font-family:inherit;width:100%}
+.si-row input:focus{outline:none;border-color:rgba(120,80,255,.5)}
+.si-hdr{font-size:10px;font-weight:700;letter-spacing:.8px;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:4px;display:grid;grid-template-columns:28px 2fr 120px 80px 1fr auto;gap:8px}
+.si-save{background:#7b3ff5;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap}
+.si-save:hover{background:#9558ff}
+#flash{position:fixed;inset:0;pointer-events:none;z-index:10;opacity:0;background:rgba(245,200,0,.1);transition:opacity .4s}
+#orbit-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:14px 22px;font-size:12px;color:rgba(255,255,255,.75);text-align:center;pointer-events:none;display:none;line-height:1.9}
+/* search modal */
+#search-box{background:#111318;border:1px solid rgba(245,200,0,.25);border-radius:16px;width:700px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.9)}
+#search-box .ah{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
+#search-box .ah h3{font-size:15px;font-weight:700;color:#fff}
+#search-box .ah button{background:none;border:none;font-size:20px;cursor:pointer;color:rgba(255,255,255,.45)}
+#search-inp-wrap{padding:12px 20px}
+#search-inp{width:100%;background:#1a1d24;border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit}
+#search-inp:focus{outline:none;border-color:rgba(245,200,0,.45)}
+#search-results{overflow-y:auto;padding:0 20px 16px;flex:1}
+#search-hdr{display:grid;grid-template-columns:140px 1fr 110px 60px 60px;gap:10px;font-size:10px;font-weight:700;letter-spacing:.8px;color:rgba(255,255,255,.3);text-transform:uppercase;padding:4px 10px 8px;margin-bottom:2px}
+.sr-item{display:grid;grid-template-columns:140px 1fr 110px 60px 60px;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:12px;border:1px solid transparent;transition:background .1s}
+.sr-item:hover{background:rgba(245,200,0,.07);border-color:rgba(245,200,0,.18)}
+.sr-id{font-weight:700;color:#f5c800;font-size:11px;font-family:monospace}
+.sr-name{color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-sku{color:rgba(255,255,255,.4);font-family:monospace;font-size:11px}
+.sr-fill{font-weight:700;text-align:right}
+.sr-sec{background:rgba(255,255,255,.07);border-radius:4px;padding:2px 7px;text-align:center;font-weight:700;color:rgba(255,255,255,.65);font-size:11px}
+.sr-empty{padding:32px;text-align:center;color:rgba(255,255,255,.25);font-size:13px}
+/* username badge in HUD */
+#usr-badge{font-size:11px;color:rgba(255,255,255,.4);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:3px 11px;cursor:pointer;pointer-events:all;transition:background .15s}
+#usr-badge:hover{background:rgba(255,255,255,.12);color:#fff}
+</style>
+</head>
+<body>
+<div id="cc"></div>
+
+<div id="xhair">
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+    <circle cx="14" cy="14" r="5" stroke="rgba(245,200,0,.85)" stroke-width="1.5" fill="none"/>
+    <line x1="14" y1="1" x2="14" y2="7" stroke="rgba(245,200,0,.75)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="14" y1="21" x2="14" y2="27" stroke="rgba(245,200,0,.75)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="1" y1="14" x2="7" y2="14" stroke="rgba(245,200,0,.75)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="21" y1="14" x2="27" y2="14" stroke="rgba(245,200,0,.75)" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<div id="hud-top">
+  <div id="hud-logo">Memory Block</div>
+  <div id="hud-loc">Warehouse · Cheltenham VIC</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="usr-badge" onclick="promptUsername()" title="Change your name">👤 <span id="usr-name-lbl">—</span></span>
+    <div id="hud-mode">LIVE INVENTORY</div>
+  </div>
+</div>
+
+<div id="stats-bar">
+  <div class="sp"><span id="st-total">0</span>pallets</div>
+  <div class="sp" style="border-color:rgba(39,174,96,.4)"><span id="st-full" style="color:#27ae60">0</span>full/high</div>
+  <div class="sp" style="border-color:rgba(245,200,0,.4)"><span id="st-med" style="color:#d4ac0d">0</span>medium</div>
+  <div class="sp" style="border-color:rgba(231,76,60,.4)"><span id="st-low" style="color:#e74c3c">0</span>low</div>
+  <div class="sp" style="border-color:rgba(100,100,100,.3)"><span id="st-empty" style="color:#888">0</span>empty</div>
+  <div class="sp" style="border-color:rgba(123,63,245,.5);background:rgba(123,63,245,.08)">🖨 <span id="st-printer" style="color:#a78bff;font-weight:700">0</span> printer units</div>
+</div>
+
+<div id="tooltip"><div id="tt-inner"><div id="tt-name"></div><div id="tt-sub"></div></div><div id="tt-arr"></div></div>
+
+<div id="info-card">
+  <div id="card-sec"></div><div id="card-name"></div>
+  <div class="cr"><span class="cl">Location</span><span class="cv mono" id="c-pid" style="color:#f5c800;font-size:11px"></span></div>
+  <div class="cr" id="c-label-row" style="display:none"><span class="cl">Pallet ID</span><span class="cv" id="c-plabel" style="font-weight:700"></span></div>
+  <div class="cr" id="c-sku-row"><span class="cl">SKU</span><span class="cv" id="c-sku"></span></div>
+  <div class="cr" id="c-sku2-row" style="display:none"><span class="cl">SKU 2</span><span class="cv" id="c-sku2"></span></div>
+  <div class="cr" id="c-sku3-row" style="display:none"><span class="cl">SKU 3</span><span class="cv" id="c-sku3"></span></div>
+  <div class="cr"><span class="cl">Fill</span><span class="cv" id="c-fill"></span></div>
+  <div class="cr"><span class="cl">Boxes</span><span class="cv" id="c-units"></span></div>
+  <div class="cr"><span class="cl">Status</span><span class="cv" id="c-status"></span></div>
+  <div id="card-bar-w"><div id="card-bar"></div></div>
+  <div style="display:flex;gap:6px;margin-top:10px">
+    <button id="card-edit" style="flex:1;margin-top:0" onclick="openEdit()">✏ Edit pallet</button>
+    <button id="card-print" onclick="printPalletLabel()" title="Print label"
+      style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer;pointer-events:all">🖨</button>
+  </div>
+</div>
+
+<div id="legend">
+  <div id="legend-title">Stock level</div>
+  <div class="lr"><div class="ld" style="background:#27ae60"></div>Full / High (60–100%)</div>
+  <div class="lr"><div class="ld" style="background:#f5c800"></div>Medium (30–59%)</div>
+  <div class="lr"><div class="ld" style="background:#e74c3c"></div>Low (1–29%)</div>
+  <div class="lr"><div class="ld" style="background:#1a1a1a;border:1px solid #555"></div>Empty (0%)</div>
+  <div class="lr"><div class="ld" style="background:#7b3ff5"></div>Printer pallet</div>
+  <div class="lr"><div class="ld" style="background:#2d6a4f"></div>Storage room</div>
+  <div class="lr"><div class="ld" style="background:#1f5fa6"></div>Spare parts</div>
+</div>
+
+<div id="mm-wrap">
+  <canvas id="mm" width="280" height="280"></canvas>
+  <div id="mm-lbl">CLICK TO TELEPORT</div>
+</div>
+
+<div id="ctrl">
+  <button class="cb" onmousedown="startMove(()=>mv(1))"      onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>mv(1))"      ontouchend="stopMove()">↑ Fwd</button>
+  <button class="cb" onmousedown="startMove(()=>mv(-1))"     onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>mv(-1))"     ontouchend="stopMove()">↓ Back</button>
+  <button class="cb" onmousedown="startMove(()=>strafe(-1))" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>strafe(-1))" ontouchend="stopMove()">◁ Strafe</button>
+  <button class="cb" onmousedown="startMove(()=>strafe(1))"  onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>strafe(1))"  ontouchend="stopMove()">▷ Strafe</button>
+  <button class="cb" onmousedown="startMove(()=>turn(-1))"   onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>turn(-1))"   ontouchend="stopMove()">↺ L</button>
+  <button class="cb" onmousedown="startMove(()=>turn(1))"    onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(()=>turn(1))"    ontouchend="stopMove()">↻ R</button>
+  <div class="cs"></div>
+  <button class="cb act" id="jA" onclick="jumpAisle(0)">Aisle A</button>
+  <button class="cb" id="jBC" onclick="jumpAisle(1)">Aisle B/C</button>
+  <button class="cb" id="jDE" onclick="jumpAisle(2)">Aisle D/E</button>
+  <button class="cb" id="jF" onclick="jumpAisle(3)">Aisle F</button>
+  <div class="cs"></div>
+  <button class="cb act" id="lf-all" onclick="setLevelFilter(null)">All Levels</button>
+  <button class="cb" id="lf-1" onclick="setLevelFilter(0)">L1</button>
+  <button class="cb" id="lf-2" onclick="setLevelFilter(1)">L2</button>
+  <button class="cb" id="lf-3" onclick="setLevelFilter(2)">L3</button>
+  <div class="cs"></div>
+  <button class="cb" id="orb-btn" onclick="toggleOrbit()">🔄 Orbit</button>
+  <button class="cb" id="bulk-btn" onclick="toggleBulk()">☑ Bulk edit</button>
+  <button class="cb" onclick="openSearch()">🔍 Search</button>
+  <button class="cb" onclick="showAudit()">📋 Audit</button>
+  <button class="cb" onclick="exportXLSX()">📥 Export</button>
+  <button class="cb" onclick="window.location.href='/dashboard'" style="border-color:rgba(245,200,0,.35);color:rgba(245,200,0,.8)">📊 Dashboard</button>
+  <button class="cb" onclick="window.location.href='/locations'" style="border-color:rgba(245,200,0,.35);color:rgba(245,200,0,.8)">📍 Locations</button>
+  <button class="cb" onclick="window.location.href='/sheet'" style="border-color:rgba(245,200,0,.35);color:rgba(245,200,0,.8)">📋 Sheet</button>
+  <button class="cb" onclick="logout()" style="margin-left:4px;border-color:rgba(231,76,60,.35);color:rgba(231,76,60,.8)">🔒 Lock</button>
+  <span id="chint">WASD/arrows=walk · Q/E=strafe · right-drag=look · scroll=move/zoom</span>
+</div>
+
+<!-- Bulk bar -->
+<div id="bulk-bar">
+  <span id="bulk-count">0 selected</span>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <label>Your name</label><input id="bk-name" type="text" placeholder="e.g. Yuvi" style="width:100px">
+    <label>Fill %</label><input id="bk-fill" type="number" min="0" max="100" style="width:70px">
+    <label>SKU</label><input id="bk-sku" type="text" placeholder="optional" style="width:120px">
+    <button class="ba" onclick="applyBulk()">Apply</button>
+    <button class="bc" onclick="clearBulk()">Clear</button>
+    <button class="bc" onclick="toggleBulk()">✕</button>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div id="edit-ov" class="modal-ov">
+  <div id="edit-box">
+    <h3 id="edit-title">Edit pallet</h3>
+    <div class="esub" id="edit-sub"></div>
+    <div id="edit-grid">
+      <!-- Row 1: Name + Pallet Label -->
+      <div class="ef"><label>YOUR NAME</label><input id="ef-who" type="text" placeholder="e.g. Yuvi"></div>
+      <div id="ef-label-row" class="ef" style="display:none"><label>PALLET LABEL / ID</label><input id="ef-label" type="text" placeholder="Physical pallet number"></div>
+      <!-- Row 2: Product name + SKU -->
+      <div class="ef"><label>PRODUCT NAME</label><input id="ef-name" type="text"></div>
+      <div class="ef"><label>SKU</label><input id="ef-sku" type="text"></div>
+      <!-- Row 3: Fill + Boxes -->
+      <div class="ef"><label>FILL % (0–100)</label><input id="ef-fill" type="number" min="0" max="100"></div>
+      <div class="ef"><label>BOXES ON PALLET</label><input id="ef-units" type="number"></div>
+      <!-- Row 4: Units/box + Refurb -->
+      <div class="ef"><label>UNITS PER BOX</label><input id="ef-upb" type="number" min="0" placeholder="e.g. 12"></div>
+      <div class="ef"><label>REFURBISHED UNITS</label><input id="ef-refurb" type="number" min="0" placeholder="0"></div>
+      <!-- Row 5: Notes full width -->
+      <div class="ef ef-full"><label>NOTES</label><input id="ef-notes" type="text" placeholder="Optional note…"></div>
+      <!-- SKU 2 block full width -->
+      <div class="ef-full" style="border-left:2px solid rgba(245,200,0,.2);padding-left:10px;margin-bottom:10px">
+        <div class="ef-sku-inner">
+          <div class="ef" style="margin-bottom:4px"><label>SKU 2 <span style="font-weight:400;opacity:.5">(optional)</span></label><input id="ef-sku2" type="text" placeholder="Second SKU if mixed"></div>
+          <div id="ef-sku2-extra" style="display:none">
+            <div class="ef" style="margin-bottom:4px"><label>BOXES (SKU 2)</label><input id="ef-units2" type="number" min="0" placeholder="0"></div>
+            <div class="ef" style="margin-bottom:4px"><label>UNITS/BOX (SKU 2)</label><input id="ef-upb2" type="number" min="0" placeholder="0"></div>
+          </div>
+        </div>
+        <button type="button" id="ef-sku2-toggle" onclick="toggleSkuExtra(2)" style="background:none;border:none;color:rgba(245,200,0,.7);font-size:11px;cursor:pointer;padding:2px 0;margin-top:2px">+ Add boxes &amp; units for SKU 2</button>
+      </div>
+      <!-- SKU 3 block full width -->
+      <div class="ef-full" style="border-left:2px solid rgba(245,200,0,.2);padding-left:10px;margin-bottom:10px">
+        <div class="ef-sku-inner">
+          <div class="ef" style="margin-bottom:4px"><label>SKU 3 <span style="font-weight:400;opacity:.5">(optional)</span></label><input id="ef-sku3" type="text" placeholder="Third SKU if needed"></div>
+          <div id="ef-sku3-extra" style="display:none">
+            <div class="ef" style="margin-bottom:4px"><label>BOXES (SKU 3)</label><input id="ef-units3" type="number" min="0" placeholder="0"></div>
+            <div class="ef" style="margin-bottom:4px"><label>UNITS/BOX (SKU 3)</label><input id="ef-upb3" type="number" min="0" placeholder="0"></div>
+          </div>
+        </div>
+        <button type="button" id="ef-sku3-toggle" onclick="toggleSkuExtra(3)" style="background:none;border:none;color:rgba(245,200,0,.7);font-size:11px;cursor:pointer;padding:2px 0;margin-top:2px">+ Add boxes &amp; units for SKU 3</button>
+      </div>
+    </div>
+    <div class="ebtns">
+      <button class="esave" onclick="saveEdit()">Save changes</button>
+      <button class="ecancel" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit modal -->
+<div id="audit-ov" class="modal-ov">
+  <div id="audit-box">
+    <div class="ah"><h3>📋 Audit Log</h3><button onclick="closeAudit()">✕</button></div>
+    <div id="audit-scroll">
+      <table>
+        <thead><tr><th>Time (UTC)</th><th>Pallet</th><th>Changed by</th><th>Field</th><th>Before</th><th>After</th></tr></thead>
+        <tbody id="audit-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Storage room modal -->
+<div id="storage-ov" class="modal-ov">
+  <div id="storage-box">
+    <h3>📦 Storage Room</h3>
+    <div class="esub">10 storage slots — edit SKU, quantity and notes for each</div>
+    <div class="si-hdr"><span>#</span><span>Product name</span><span>SKU</span><span>Qty</span><span>Notes</span><span></span></div>
+    <div id="storage-slots"></div>
+    <div class="ebtns" style="margin-top:16px">
+      <button class="ecancel" onclick="closeStorage()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spare parts modal -->
+<div id="spare-ov" class="modal-ov">
+  <div id="storage-box" style="width:820px;max-width:95vw">
+    <h3>🔧 Spare Parts</h3>
+    <div class="esub">80 spare parts slots — edit name, SKU, quantity and notes</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center">
+      <input id="spare-search" type="text" placeholder="Search by name or SKU…"
+        oninput="filterSpare()"
+        style="flex:1;background:#1a1d24;border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:7px 11px;font-size:13px;font-family:inherit">
+    </div>
+    <div class="si-hdr"><span>#</span><span>Part name</span><span>SKU</span><span>Qty</span><span>Notes</span><span></span></div>
+    <div id="spare-slots" style="max-height:55vh;overflow-y:auto"></div>
+    <div class="ebtns" style="margin-top:16px">
+      <button class="ecancel" onclick="closeSpare()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Printer tracker modal -->
+<div id="printer-ov" class="modal-ov">
+  <div id="storage-box" style="width:640px">
+    <h3>🖨 Printer Tracker</h3>
+    <div class="esub">10 rows — Printer ID, Laptop ID and notes for each unit</div>
+    <div class="si-hdr" style="grid-template-columns:32px 1fr 1fr 1fr 60px"><span>#</span><span>Printer ID</span><span>Laptop ID</span><span>Notes</span><span></span></div>
+    <div id="printer-slots"></div>
+    <div class="ebtns" style="margin-top:16px">
+      <button class="ecancel" onclick="closePrinter()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Search modal -->
+<div id="search-ov" class="modal-ov">
+  <div id="search-box">
+    <div class="ah"><h3>🔍 Product Search</h3><button onclick="closeSearch()">✕</button></div>
+    <div id="search-inp-wrap">
+      <input id="search-inp" type="text" placeholder="Search by product name, SKU or pallet ID…" oninput="runSearch()">
+    </div>
+    <div id="search-hdr"><span>PALLET ID</span><span>PRODUCT</span><span>SKU</span><span>FILL</span><span>SEC</span></div>
+    <div id="search-results"><div class="sr-empty">Start typing to search…</div></div>
+  </div>
+</div>
+
+<div id="flash"></div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── PHYSICAL LAYOUT ──────────────────────────────────────────────────────────
+// Right→Left in X: A(wall) | aisle1 | B/C(back-to-back) | aisle2 | D/E(back-to-back) | aisle3 | F(wall)
+// Segments number from front (printer end) = low Z
+
+const SEG_COUNTS  = {A:11,B:8,C:8,D:8,E:8,F:7};
+const LEVELS      = 3;
+const SLOTS       = 2;          // pallets per segment width
+const SEG_D       = 1.8;        // depth per slot
+const SEG_GAP     = 1.0;        // gap between segments
+const SEG_UNIT    = SEG_D*SLOTS + SEG_GAP;  // = 4.6
+const LEVEL_H     = 1.8;
+const RACK_D      = 1.15;       // rack beam depth
+const WALL_THICK  = 0.3;
+
+// X positions (right wall = high X)
+const X_RIGHT_WALL  = 22.0;
+const X_A_FACE      = 20.5;    // A rack faces left (into aisle 1)
+const X_AISLE1_C    = 18.5;    // centre of aisle 1
+const X_B_FACE      = 16.5;    // B rack faces right (into aisle 1)
+const X_BC_MID      = 15.2;    // B/C back-to-back midpoint
+const X_C_FACE      = 13.9;    // C rack faces left (into aisle 2)
+const X_AISLE2_C    = 12.0;    // centre of aisle 2
+const X_D_FACE      = 10.1;    // D rack faces right (into aisle 2)
+const X_DE_MID      =  8.8;
+const X_E_FACE      =  7.5;    // E rack faces left (into aisle 3)
+const X_AISLE3_C    =  5.5;    // centre of aisle 3
+const X_F_FACE      =  3.5;    // F rack faces right (into aisle 3)
+const X_LEFT_WALL   =  0.0;
+
+const AISLE_CENTERS = [X_AISLE1_C, X_AISLE2_C, X_AISLE3_C];
+// Walkable X bounds per aisle
+const AISLE_BOUNDS  = [
+  [X_B_FACE + 0.1, X_A_FACE - 0.1],    // aisle 1: X 16.6 – 20.4
+  [X_D_FACE + 0.1, X_C_FACE - 0.1],    // aisle 2: X 10.2 – 13.8
+  [X_F_FACE + 0.1, X_E_FACE - 0.1],    // aisle 3: X  3.6 –  7.4
+];
+const MAX_SEGS = 11;
+const WORLD_Z  = MAX_SEGS * SEG_UNIT + 8;  // extra room for printer + storage at far end
+const WORLD_W  = X_RIGHT_WALL + 1;
+const CEILING_H= LEVELS * LEVEL_H + 2.8;
+
+// Printer: in front of A1 — far end of Section A (high Z), right wall side
+const A_TOTAL_Z   = SEG_COUNTS['A'] * SEG_UNIT;   // Z position of A1 far end
+const PRINTER_X   = X_A_FACE - 0.5;
+const PRINTER_Z   = A_TOTAL_Z + 1.5;
+
+// Storage room: parallel to printer at south end, centred between D/E aisles
+const STORAGE_X   = (X_D_FACE + X_E_FACE) / 2;
+const STORAGE_Z   = PRINTER_Z;
+
+// ── COLOURS ──────────────────────────────────────────────────────────────────
+function fillColor(f, isPrinter, isStorage){
+  if(isStorage)  return 0x2d6a4f;
+  if(isPrinter)  return 0x7b3ff5;
+  if(f===0)      return 0x1a1a1a;
+  if(f<30)       return 0xe74c3c;
+  if(f<60)       return 0xf5c800;
+  return 0x27ae60;
+}
+function fillHex(f){
+  if(f===0) return '#1a1a1a';
+  if(f<30)  return '#e74c3c';
+  if(f<60)  return '#f5c800';
+  return '#27ae60';
+}
+function statusLabel(f){
+  if(f===0) return 'Empty';
+  if(f<30)  return 'Low';
+  if(f<60)  return 'Medium';
+  return 'Full / High';
+}
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+let palletsData=[], storageData=[];
+const meshMap=new Map();
+const sectionSigns=[];
+// Which sections are visible per aisle index (0=A1, 1=A2, 2=A3)
+const AISLE_SECTIONS=[['A','B'],['C','D'],['E','F']];
+
+function getP(sec,seg,slot,lv){
+  return palletsData.find(p=>p.section===sec&&p.segment===seg&&p.slot===slot&&p.level===lv);
+}
+
+async function loadAll(){
+  [palletsData, storageData] = await Promise.all([
+    fetch('/api/pallets').then(r=>r.json()),
+    fetch('/api/storage').then(r=>r.json()),
+  ]);
+  buildWarehouse();
+  updateStats();
+  animate();
+  updateCam(); // initialise sign visibility on load
+}
+
+// ── SCENE ────────────────────────────────────────────────────────────────────
+const container=document.getElementById('cc');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.65;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xd8dde6);
+scene.fog=new THREE.FogExp2(0xd8dde6,0.011);
+
+const camera=new THREE.PerspectiveCamera(72,window.innerWidth/window.innerHeight,0.1,140);
+
+// ── MATERIALS ────────────────────────────────────────────────────────────────
+const mFloor   =new THREE.MeshStandardMaterial({color:0xd6d2ca,roughness:.9,metalness:.02});
+const mLine    =new THREE.MeshStandardMaterial({color:0xf5c800,roughness:.8});
+const mCeil    =new THREE.MeshStandardMaterial({color:0xfafafa,roughness:.9});
+const mWall    =new THREE.MeshStandardMaterial({color:0xeceef2,roughness:.95});
+const mUpright =new THREE.MeshStandardMaterial({color:0xd45000,roughness:.4,metalness:.6});
+const mBeam    =new THREE.MeshStandardMaterial({color:0x2255aa,roughness:.5,metalness:.55});
+const mPalBase =new THREE.MeshStandardMaterial({color:0x8B6914,roughness:.9});
+
+// ── LIGHTING ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff,2.2));
+const dir=new THREE.DirectionalLight(0xffffff,.8);
+dir.position.set(8,20,10);dir.castShadow=true;
+dir.shadow.camera.left=-40;dir.shadow.camera.right=40;
+dir.shadow.camera.top=30;dir.shadow.camera.bottom=-5;
+dir.shadow.mapSize.set(2048,2048);
+scene.add(dir);
+
+// Overhead area lights along aisles (no physical pendants — open roof)
+const LIGHT_ZS=[.18,.34,.50,.66,.82].map(t=>t*WORLD_Z);
+AISLE_CENTERS.forEach(ax=>{
+  LIGHT_ZS.forEach((lz,i)=>{
+    const pt=new THREE.PointLight(0xffffff,i%2===0?4.5:4.0,25,1.1);
+    pt.position.set(ax,CEILING_H-.3,lz);scene.add(pt);
+  });
+});
+
+// ── ENVIRONMENT ──────────────────────────────────────────────────────────────
+const FW=WORLD_W+3,FD=WORLD_Z+5;
+const flr=new THREE.Mesh(new THREE.PlaneGeometry(FW,FD),mFloor);
+flr.rotation.x=-Math.PI/2;flr.position.set(FW/2-2,0,FD/2-2.5);
+flr.receiveShadow=true;scene.add(flr);
+
+// Yellow safety lines along each aisle
+AISLE_CENTERS.forEach(ax=>{
+  [-1.6,1.6].forEach(off=>{
+    const ln=new THREE.Mesh(new THREE.PlaneGeometry(.1,FD),mLine);
+    ln.rotation.x=-Math.PI/2;ln.position.set(ax+off,.005,FD/2-2.5);scene.add(ln);
+  });
+});
+
+const ceil=null; // ceiling removed
+
+// No roof trusses — open warehouse
+[{z:-2.2,ry:0},{z:FD+.5,ry:Math.PI}].forEach(({z,ry})=>{
+  const w=new THREE.Mesh(new THREE.PlaneGeometry(FW,CEILING_H),mWall);
+  w.rotation.y=ry;w.position.set(FW/2-2,CEILING_H/2,z);scene.add(w);
+});
+// Side walls
+[{x:X_RIGHT_WALL+.5,ry:-Math.PI/2},{x:X_LEFT_WALL-.5,ry:Math.PI/2}].forEach(({x,ry})=>{
+  const w=new THREE.Mesh(new THREE.PlaneGeometry(FD,CEILING_H),mWall);
+  w.rotation.y=ry;w.position.set(x,CEILING_H/2,FD/2-2.5);scene.add(w);
+});
+
+// ── SPRITES ───────────────────────────────────────────────────────────────────
+function makeSprite(text,bg='#f5c800',fg='#1a1200',w=256,h=64){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=bg;
+  if(ctx.roundRect)ctx.roundRect(2,2,w-4,h-4,10);else ctx.rect(2,2,w-4,h-4);
+  ctx.fill();
+  ctx.fillStyle=fg;ctx.font=`bold ${Math.floor(h*.48)}px Arial`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,w/2,h/2+2);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));
+  sp.scale.set(w/h*0.9,0.45,1);
+  return sp;
+}
+
+// Dedicated high-quality bay location tags (A1, B3, etc.)
+function makeBayLabel(text){
+  const W=512,H=148;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+
+  // Drop shadow behind the whole tag
+  ctx.shadowColor='rgba(0,0,0,0.55)';
+  ctx.shadowBlur=12;ctx.shadowOffsetX=2;ctx.shadowOffsetY=4;
+
+  // Tag body — gold gradient
+  const R=22;
+  function roundedRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#fff59d');   // bright highlight top
+  grad.addColorStop(0.18,'#ffe033');
+  grad.addColorStop(0.55,'#f5c800');
+  grad.addColorStop(0.88,'#c8a000');
+  grad.addColorStop(1,'#9e7c00');   // deep shadow bottom
+  roundedRect(5,5,W-10,H-10,R);
+  ctx.fillStyle=grad;ctx.fill();
+
+  // Reset shadow before strokes/highlights
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+
+  // Outer dark border
+  roundedRect(5,5,W-10,H-10,R);
+  ctx.strokeStyle='#6b4f00';ctx.lineWidth=4;ctx.stroke();
+
+  // Inner bright border (inset highlight)
+  roundedRect(11,11,W-22,H-22,R-4);
+  ctx.strokeStyle='rgba(255,255,220,0.45)';ctx.lineWidth=2;ctx.stroke();
+
+  // Gloss sheen — top third oval
+  const gloss=ctx.createLinearGradient(0,8,0,H*0.42);
+  gloss.addColorStop(0,'rgba(255,255,255,0.38)');
+  gloss.addColorStop(1,'rgba(255,255,255,0)');
+  roundedRect(12,9,W-24,H*0.42,R-3);
+  ctx.fillStyle=gloss;ctx.fill();
+
+  // Text shadow
+  ctx.font=`bold ${Math.floor(H*0.66)}px "Arial Black",Arial`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(0,0,0,0.22)';
+  ctx.fillText(text,W/2+2,H/2+3);
+
+  // Main text
+  ctx.fillStyle='#1a1000';
+  ctx.fillText(text,W/2,H/2-1);
+
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));
+  sp.scale.set(W/H*.7,0.42,1);
+  return sp;
+}
+
+function makeSignTex(letter){
+  const c=document.createElement('canvas');c.width=128;c.height=128;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#f5c800';ctx.fillRect(0,0,128,128);
+  ctx.fillStyle='#1a1200';ctx.font='bold 88px Arial';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(letter,64,68);
+  return new THREE.CanvasTexture(c);
+}
+
+// ── BUILD SECTION ─────────────────────────────────────────────────────────────
+function buildSection(sec, faceX, rackX) {
+  const numSegs = SEG_COUNTS[sec];
+  for(let seg=0; seg<numSegs; seg++){
+    const z0 = seg * SEG_UNIT;
+    const zMid = z0 + SEG_D*SLOTS/2;
+    // S1 = south/printer end (high Z), SN = north/far end (low Z)
+    const displayNum = numSegs - seg;
+
+    // Uprights at segment start and end
+    [z0, z0+SEG_D*SLOTS].forEach(uz=>{
+      [faceX, rackX].forEach(ux=>{
+        const up=new THREE.Mesh(new THREE.BoxGeometry(.09,LEVELS*LEVEL_H+.5,.09),mUpright);
+        up.position.set(ux,(LEVELS*LEVEL_H)/2,uz);up.castShadow=true;scene.add(up);
+      });
+    });
+
+    // Beams
+    for(let lv=0;lv<=LEVELS;lv++){
+      const by=lv*LEVEL_H;
+      [z0,z0+SEG_D*SLOTS-.01].forEach(bz=>{
+        const bm=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(rackX-faceX),.07,.07),mBeam);
+        bm.position.set((faceX+rackX)/2,by,bz);scene.add(bm);
+      });
+      const bz2=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,SEG_D*SLOTS),mBeam);
+      bz2.position.set(faceX,by,zMid);scene.add(bz2);
+    }
+
+    // Bay label — matches pallet ID: A1 = seg 0 (back), A11 = seg 10 (entry end)
+    const lbl=makeBayLabel(`${sec}${displayNum}`);
+    lbl.position.set(faceX+(rackX>faceX?-.55:.55),LEVELS*LEVEL_H+.78,zMid);
+    scene.add(lbl);
+
+    // Section sign on seg numSegs-1 (front segment, displayNum=1)
+    if(seg===numSegs-1){
+      const sign=new THREE.Mesh(new THREE.PlaneGeometry(.32,.32),
+        new THREE.MeshStandardMaterial({map:makeSignTex(sec),roughness:.6,
+          emissive:0xf5c800,emissiveIntensity:.1}));
+      sign.position.set(faceX+(rackX>faceX?-.06:.06),LEVELS*LEVEL_H*.6,z0+.4);
+      sign.rotation.y=rackX>faceX?-Math.PI/2:Math.PI/2;
+      sign.userData.signSection=sec;
+      scene.add(sign);
+      sectionSigns.push(sign);
+    }
+
+    // Pallets
+    for(let slot=0;slot<SLOTS;slot++){
+      const zc=z0+slot*SEG_D+SEG_D/2;
+      for(let lv=0;lv<LEVELS;lv++){
+        const p=getP(sec,seg,slot,lv);
+        if(!p) continue;
+        const y=lv*LEVEL_H+.06;
+        const boxH=LEVEL_H*.72;
+        const rXc=(faceX+rackX)/2;
+
+        const base=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(rackX-faceX)*.92,.1,SEG_D*.85),mPalBase);
+        base.position.set(rXc,y+.05,zc);base.castShadow=true;scene.add(base);
+
+        const col=new THREE.Color(fillColor(p.fill));
+        if(p.fill>0){col.r=Math.min(1,col.r+.05);col.g=Math.min(1,col.g*.97+.02);col.b=Math.min(1,col.b*.9);}
+        const mat=new THREE.MeshStandardMaterial({color:col,roughness:.82});
+        const box=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(rackX-faceX)*.86,boxH,SEG_D*.78),mat);
+        box.position.set(rXc,y+.1+boxH/2,zc);
+        box.castShadow=true;box.userData.palletData=p;
+        scene.add(box);meshMap.set(box,p);
+
+        if(p.fill>0){
+          const wrap=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(rackX-faceX)*.88,.03,SEG_D*.80),
+            new THREE.MeshStandardMaterial({color:0xaaccee,transparent:true,opacity:.28,roughness:.2}));
+          wrap.position.set(rXc,y+.1+boxH*.55,zc);scene.add(wrap);
+        }
+      }
+    }
+  }
+}
+
+// ── BUILD WAREHOUSE ───────────────────────────────────────────────────────────
+function buildWarehouse(){
+  // Section A — right wall, single sided, face points LEFT into aisle 1
+  buildSection('A', X_A_FACE, X_A_FACE + RACK_D);
+
+  // B/C back-to-back — B faces RIGHT into aisle1, C faces LEFT into aisle2
+  buildSection('B', X_B_FACE, X_B_FACE - RACK_D);
+  buildSection('C', X_C_FACE, X_C_FACE + RACK_D);
+
+  // D/E back-to-back
+  buildSection('D', X_D_FACE, X_D_FACE - RACK_D);
+  buildSection('E', X_E_FACE, X_E_FACE + RACK_D);
+
+  // Section F — left wall, single sided, face points RIGHT into aisle 3
+  buildSection('F', X_F_FACE, X_F_FACE - RACK_D);
+
+  buildPrinterPallet();
+  buildStorageRoom();
+  buildSparePartsRoom();
+}
+
+// ── PRINTER PALLET ────────────────────────────────────────────────────────────
+let printerMesh=null, printerLabelSprite=null;
+function buildPrinterPallet(){
+  const p=palletsData.find(x=>x.is_printer);
+  const platMat=new THREE.MeshStandardMaterial({color:0x4a2d8f,roughness:.6,metalness:.3});
+  const plat=new THREE.Mesh(new THREE.BoxGeometry(3.2,.15,2.2),platMat);
+  plat.position.set(PRINTER_X,.08,PRINTER_Z);plat.receiveShadow=true;scene.add(plat);
+
+  const boxMat=new THREE.MeshStandardMaterial({color:0x7b3ff5,roughness:.5,metalness:.1,
+    emissive:0x7b3ff5,emissiveIntensity:.15});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.4,1.8),boxMat);
+  box.position.set(PRINTER_X,.15+.7,PRINTER_Z);
+  box.castShadow=true;
+  if(p){box.userData.palletData=p;meshMap.set(box,p);printerMesh=box;}
+  scene.add(box);
+
+  const lbl=makeSprite('🖨 PRINTER','#7b3ff5','#ffffff',320,72);
+  lbl.scale.set(2.5,.55,1);lbl.position.set(PRINTER_X,2.5,PRINTER_Z);scene.add(lbl);
+  updatePrinterLabel(p?.units||0);
+}
+
+function updatePrinterLabel(units){
+  if(printerLabelSprite)scene.remove(printerLabelSprite);
+  const sp=makeSprite(`${units} units`,'#1a1200','#f5c800',256,56);
+  sp.scale.set(2,.45,1);sp.position.set(PRINTER_X,1.95,PRINTER_Z);
+  scene.add(sp);printerLabelSprite=sp;
+}
+
+// ── STORAGE ROOM ──────────────────────────────────────────────────────────────
+let storageMesh=null;
+function buildStorageRoom(){
+  const platMat=new THREE.MeshStandardMaterial({color:0x1b4332,roughness:.7,metalness:.2});
+  const plat=new THREE.Mesh(new THREE.BoxGeometry(2.8,.15,2.0),platMat);
+  plat.position.set(STORAGE_X,.08,STORAGE_Z);plat.receiveShadow=true;scene.add(plat);
+
+  const boxMat=new THREE.MeshStandardMaterial({color:0x2d6a4f,roughness:.55,metalness:.1,
+    emissive:0x2d6a4f,emissiveIntensity:.12});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.6,1.6),boxMat);
+  box.position.set(STORAGE_X,.15+.8,STORAGE_Z);
+  box.castShadow=true;box.userData.isStorage=true;
+  scene.add(box);meshMap.set(box,{isStorage:true});storageMesh=box;
+
+  const lbl=makeSprite('📦 STORAGE ROOM','#2d6a4f','#ffffff',400,72);
+  lbl.scale.set(3.2,.55,1);lbl.position.set(STORAGE_X,2.6,STORAGE_Z);scene.add(lbl);
+}
+
+// ── SPARE PARTS ROOM ─────────────────────────────────────────────────────────
+const SPARE_X = STORAGE_X - 3.8;   // sits next to storage room
+const SPARE_Z = STORAGE_Z;
+
+let spareMesh=null;
+function buildSparePartsRoom(){
+  const platMat=new THREE.MeshStandardMaterial({color:0x1a3a5c,roughness:.7,metalness:.2});
+  const plat=new THREE.Mesh(new THREE.BoxGeometry(2.8,.15,2.0),platMat);
+  plat.position.set(SPARE_X,.08,SPARE_Z);plat.receiveShadow=true;scene.add(plat);
+
+  const boxMat=new THREE.MeshStandardMaterial({color:0x1f5fa6,roughness:.55,metalness:.1,
+    emissive:0x1f5fa6,emissiveIntensity:.12});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.6,1.6),boxMat);
+  box.position.set(SPARE_X,.15+.8,SPARE_Z);
+  box.castShadow=true;box.userData.isSpareParts=true;
+  scene.add(box);meshMap.set(box,{isSpareParts:true});spareMesh=box;
+
+  const lbl=makeSprite('🔧 SPARE PARTS','#1f5fa6','#ffffff',400,72);
+  lbl.scale.set(3.2,.55,1);lbl.position.set(SPARE_X,2.6,SPARE_Z);scene.add(lbl);
+}
+
+// ── CEILING & TRUSSES ────────────────────────────────────────────────────────
+function buildCeiling(){
+  const ceilMat=new THREE.MeshStandardMaterial({color:0x1c1e24,roughness:1,metalness:0});
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(FW+4,FD+4),ceilMat);
+  ceil.rotation.x=Math.PI/2;
+  ceil.position.set(FW/2-2,CEILING_H,FD/2-2.5);
+  scene.add(ceil);
+
+  const trussMat=new THREE.MeshStandardMaterial({color:0x383c44,roughness:.85,metalness:.5});
+  // Cross-aisle trusses
+  [.15,.32,.49,.66,.83].forEach(t=>{
+    const tr=new THREE.Mesh(new THREE.BoxGeometry(FW+2,.14,.12),trussMat);
+    tr.position.set(FW/2-2,CEILING_H-.07,t*(FD)-2.5);
+    scene.add(tr);
+  });
+  // Along-aisle purlins above each rack row
+  [X_AISLE1_C,X_AISLE2_C,X_AISLE3_C].forEach(ax=>{
+    const pu=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,FD+2),trussMat);
+    pu.position.set(ax,CEILING_H-.07,FD/2-2.5);
+    scene.add(pu);
+  });
+}
+
+// ── TUBE LIGHTS ───────────────────────────────────────────────────────────────
+function buildTubeLights(){
+  const tubeGeo=new THREE.CylinderGeometry(.032,.032,1.5,8);
+  const tubeMat=new THREE.MeshStandardMaterial({
+    color:0xffffff,emissive:0xfff8e8,emissiveIntensity:4,roughness:.05,metalness:0
+  });
+  const bracketMat=new THREE.MeshStandardMaterial({color:0x3a3c44,roughness:.7,metalness:.7});
+  const bracketGeo=new THREE.BoxGeometry(.05,.2,.05);
+
+  const ZS=[.18,.34,.50,.66,.82].map(t=>t*WORLD_Z);
+  AISLE_CENTERS.forEach(ax=>{
+    ZS.forEach(lz=>{
+      // Tube runs along Z-axis
+      const tube=new THREE.Mesh(tubeGeo,tubeMat);
+      tube.rotation.x=Math.PI/2;
+      tube.position.set(ax,CEILING_H-.22,lz);
+      tube.castShadow=false;
+      scene.add(tube);
+      // End caps
+      [-0.76,0.76].forEach(dz=>{
+        const cap=new THREE.Mesh(new THREE.CylinderGeometry(.036,.036,.04,8),bracketMat);
+        cap.rotation.x=Math.PI/2;
+        cap.position.set(ax,CEILING_H-.22,lz+dz);
+        scene.add(cap);
+      });
+      // Mounting bracket
+      const br=new THREE.Mesh(bracketGeo,bracketMat);
+      br.position.set(ax,CEILING_H-.1,lz);
+      scene.add(br);
+    });
+  });
+}
+
+// ── HOLD-TO-MOVE BUTTONS ─────────────────────────────────────────────────────
+let _btnInterval=null;
+window.startMove=fn=>{
+  if(orbitMode)return;
+  fn();
+  clearInterval(_btnInterval);
+  _btnInterval=setInterval(()=>{ if(!orbitMode) fn(); else stopMove(); },75);
+};
+window.stopMove=()=>{ clearInterval(_btnInterval); _btnInterval=null; };
+
+// ── PLAYER ────────────────────────────────────────────────────────────────────
+let orbitMode=false;
+let px=X_AISLE1_C,py=1.65,pz=PRINTER_Z+2;
+let yaw=Math.PI,pitch=0;
+const WSPD=.28,TSPD=.044,SSPD=.22;
+let activeAisle=0;
+
+function clamp(nx,nz){
+  // Snap X to aisle centre — no lateral drift into pallets
+  for(let i=0;i<AISLE_BOUNDS.length;i++){
+    const[mn,mx]=AISLE_BOUNDS[i];
+    if(nx>=mn&&nx<=mx)
+      return{x:AISLE_CENTERS[i],z:Math.max(.3,Math.min(WORLD_Z-.5,nz)),ok:true};
+  }
+  // Cross-corridor at warehouse ends — allow free X movement
+  if(nz<.5||nz>WORLD_Z-.5)
+    return{x:Math.max(X_LEFT_WALL-.5,Math.min(X_RIGHT_WALL+.5,nx)),z:nz,ok:true};
+  return{x:px,z:pz,ok:false};
+}
+
+window.mv=d=>{const r=clamp(px+Math.sin(yaw)*WSPD*2*d,pz+Math.cos(yaw)*WSPD*2*d);px=r.x;pz=r.z;updateCam();};
+window.strafe=d=>{const r=clamp(px+Math.cos(yaw)*SSPD*2*d,pz-Math.sin(yaw)*SSPD*2*d);px=r.x;pz=r.z;updateCam();};
+window.turn=d=>{yaw+=Math.PI/2*.4*d;updateCam();};
+
+// Aisle jump — 4 aisles now: A side, B/C, D/E, F side
+const AISLE_JUMP_X=[X_AISLE1_C,X_AISLE2_C,X_AISLE3_C, X_AISLE1_C];
+window.jumpAisle=idx=>{
+  activeAisle=idx;
+  // Map button index to actual aisle centre
+  const xs=[X_AISLE1_C, X_AISLE2_C, X_AISLE3_C, X_AISLE3_C];
+  px=xs[idx];py=1.65;pz=2.0;yaw=0;pitch=0;
+  orbitTarget.set(xs[idx],2,WORLD_Z/2);
+  updateCam();
+  ['jA','jBC','jDE','jF'].forEach((id,i)=>document.getElementById(id).classList.toggle('act',i===idx));
+};
+
+function updateCam(){
+  if(orbitMode)return;
+  camera.position.set(px,py,pz);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=yaw;camera.rotation.x=pitch;camera.rotation.z=0;
+  // HUD
+  const ai=AISLE_BOUNDS.findIndex(([mn,mx])=>px>=mn&&px<=mx);
+  const aisleNames=['Aisle A','Aisle B/C','Aisle D/E','Aisle F'];
+  const seg=Math.max(1,Math.min(MAX_SEGS,Math.ceil(pz/SEG_UNIT)));
+  document.getElementById('hud-loc').textContent=
+    `${ai>=0?aisleNames[ai]:'—'} · Segment ${seg}`;
+  // Show signs only for sections visible from current aisle
+  const visSections=ai>=0?AISLE_SECTIONS[ai]:['A','B','C','D','E','F'];
+  sectionSigns.forEach(s=>{s.visible=visSections.includes(s.userData.signSection);});
+}
+
+// ── ORBIT ─────────────────────────────────────────────────────────────────────
+let orbitTarget=new THREE.Vector3(X_AISLE2_C,2,WORLD_Z/2);
+let orbitR=26,orbitH=-Math.PI/2,orbitV=.28;
+
+window.toggleOrbit=()=>{
+  orbitMode=!orbitMode;
+  document.getElementById('orb-btn').classList.toggle('act',orbitMode);
+  document.getElementById('xhair').style.display=orbitMode?'none':'block';
+  renderer.domElement.style.cursor=orbitMode?'grab':'crosshair';
+  if(orbitMode){orbitTarget.set(X_AISLE2_C,2,WORLD_Z/2);orbitR=26;}
+};
+
+function updateOrbit(){
+  const x=orbitTarget.x+orbitR*Math.cos(orbitV)*Math.cos(orbitH);
+  const y=orbitTarget.y+orbitR*Math.sin(orbitV);
+  const z=orbitTarget.z+orbitR*Math.cos(orbitV)*Math.sin(orbitH);
+  camera.position.set(x,y,z);camera.lookAt(orbitTarget);
+}
+
+// ── MOUSE ─────────────────────────────────────────────────────────────────────
+let mlOn=false,mlX=0,mlY=0,orbDrag=false,orbPan=false,oX=0,oY=0;
+
+renderer.domElement.addEventListener('mousedown',e=>{
+  if(!orbitMode){
+    if(e.button===2||e.button===1){mlOn=true;mlX=e.clientX;mlY=e.clientY;renderer.domElement.style.cursor='none';e.preventDefault();}
+  } else {
+    if(e.button===0&&!e.shiftKey){orbDrag=true;oX=e.clientX;oY=e.clientY;renderer.domElement.style.cursor='grabbing';}
+    if(e.button===2||(e.button===0&&e.shiftKey)){orbPan=true;oX=e.clientX;oY=e.clientY;renderer.domElement.style.cursor='move';}
+  }
+});
+window.addEventListener('mousemove',e=>{
+  if(mlOn&&!orbitMode){
+    yaw-=(e.clientX-mlX)*.003;
+    pitch=Math.max(-Math.PI*.44,Math.min(Math.PI*.44,pitch-(e.clientY-mlY)*.003));
+    mlX=e.clientX;mlY=e.clientY;updateCam();
+  }
+  if(orbDrag&&orbitMode){
+    orbitH-=(e.clientX-oX)*.005;
+    orbitV=Math.max(-.05,Math.min(1.3,orbitV-(e.clientY-oY)*.005));
+    oX=e.clientX;oY=e.clientY;
+  }
+  if(orbPan&&orbitMode){
+    const dx=(e.clientX-oX)*.022,dy=(e.clientY-oY)*.022;
+    const right=new THREE.Vector3(Math.cos(orbitH),0,Math.sin(orbitH));
+    orbitTarget.addScaledVector(right,-dx);
+    orbitTarget.y=Math.max(0,Math.min(CEILING_H,orbitTarget.y+dy));
+    orbitTarget.x=Math.max(-3,Math.min(WORLD_W+3,orbitTarget.x));
+    orbitTarget.z=Math.max(-3,Math.min(WORLD_Z+3,orbitTarget.z));
+    oX=e.clientX;oY=e.clientY;
+  }
+});
+window.addEventListener('mouseup',()=>{
+  mlOn=false;orbDrag=false;orbPan=false;
+  renderer.domElement.style.cursor=orbitMode?'grab':'crosshair';
+});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(orbitMode){orbitR=Math.max(2,Math.min(60,orbitR+e.deltaY*.028));}
+  else{
+    const d=e.deltaY>0?-1:1,s=.95;
+    const r=clamp(px+Math.sin(yaw)*s*d,pz+Math.cos(yaw)*s*d);
+    px=r.x;pz=r.z;updateCam();
+  }
+},{passive:false});
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────────
+const keys={};
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement&&document.activeElement.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  keys[e.code]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.key))e.preventDefault();
+});
+document.addEventListener('keyup',e=>{keys[e.code]=false;});
+
+// ── RAYCASTER ────────────────────────────────────────────────────────────────
+const rc=new THREE.Raycaster(),mouse=new THREE.Vector2();
+let hovMesh=null,lookedAt=null;
+
+renderer.domElement.addEventListener('mousemove',e=>{
+  if(mlOn||orbDrag||orbPan)return;
+  mouse.x=(e.clientX/window.innerWidth)*2-1;
+  mouse.y=-(e.clientY/window.innerHeight)*2+1;
+  const tt=document.getElementById('tooltip');
+  tt.style.left=e.clientX+'px';tt.style.top=e.clientY+'px';
+  rc.setFromCamera(mouse,camera);
+  const hits=rc.intersectObjects([...meshMap.keys()]);
+  if(hits.length&&(hits[0].object.userData.palletData||hits[0].object.userData.isStorage||hits[0].object.userData.isSpareParts)){
+    const obj=hits[0].object;
+    const isStorage=!!obj.userData.isStorage;
+    const isSpareParts=!!obj.userData.isSpareParts;
+    const p=obj.userData.palletData;
+    if(hovMesh!==obj){
+      if(hovMesh&&!bulkSel.has(hovMesh.userData.palletData?.id))
+        hovMesh.material.emissiveIntensity=(hovMesh.userData.isStorage||hovMesh.userData.isSpareParts)?.12:0;
+      hovMesh=obj;
+      if(!isStorage&&!isSpareParts&&!bulkSel.has(p?.id)){obj.material.emissive=new THREE.Color(0xffffff);obj.material.emissiveIntensity=.22;}
+      else if(isStorage||isSpareParts){obj.material.emissiveIntensity=.35;}
+    }
+    document.getElementById('tt-name').textContent=
+      isStorage?'📦 Storage Room':isSpareParts?'🔧 Spare Parts':p.is_printer?'🖨 Printer':p.name;
+    document.getElementById('tt-sub').textContent=
+      isStorage?'Click to view 10 storage slots':
+      isSpareParts?'Click to view 80 spare parts slots':
+      p.is_printer?`${p.units} boxes in warehouse — click to update`:
+      `Section ${p.section} · ${p.sku} · ${p.fill}% · ${statusLabel(p.fill)}`;
+    tt.style.display='block';
+    renderer.domElement.style.cursor='pointer';
+  } else {
+    if(hovMesh){
+      const isSt=!!(hovMesh.userData.isStorage||hovMesh.userData.isSpareParts);
+      const pd=hovMesh.userData.palletData;
+      if(!isSt&&pd&&!bulkSel.has(pd.id))hovMesh.material.emissiveIntensity=0;
+      else if(isSt)hovMesh.material.emissiveIntensity=.12;
+    }
+    hovMesh=null;
+    document.getElementById('tooltip').style.display='none';
+    renderer.domElement.style.cursor=orbitMode?'grab':'crosshair';
+  }
+});
+
+renderer.domElement.addEventListener('click',e=>{
+  if(mlOn||orbDrag||orbPan)return;
+  mouse.x=(e.clientX/window.innerWidth)*2-1;
+  mouse.y=-(e.clientY/window.innerHeight)*2+1;
+  rc.setFromCamera(mouse,camera);
+  const hits=rc.intersectObjects([...meshMap.keys()]);
+  if(!hits.length)return;
+  const obj=hits[0].object;
+  if(obj.userData.isStorage){openStorage();return;}
+  if(obj.userData.isSpareParts){openSpare();return;}
+  const p=obj.userData.palletData;
+  if(!p)return;
+  if(p.is_printer){openPrinter();doFlash();return;}
+  if(bulkMode&&!p.is_printer){
+    if(bulkSel.has(p.id)){
+      bulkSel.delete(p.id);
+      const col=new THREE.Color(fillColor(p.fill));
+      if(p.fill>0){col.r=Math.min(1,col.r+.05);col.g=Math.min(1,col.g*.97+.02);col.b=Math.min(1,col.b*.9);}
+      obj.material.color.copy(col);obj.material.emissive.set(0);obj.material.emissiveIntensity=0;
+    } else {
+      bulkSel.add(p.id);
+      obj.material.emissive=new THREE.Color(0xffffff);obj.material.emissiveIntensity=.75;
+      obj.material.color.set(0xffffff);
+    }
+    updateBulkCount();
+  } else {
+    lookedAt={p,mesh:obj};showCard(p);doFlash();
+  }
+});
+
+// ── INFO CARD ─────────────────────────────────────────────────────────────────
+function showCard(p){
+  document.getElementById('card-sec').textContent=p.is_printer?'PRINTER TRACKER':`SECTION ${p.section}`;
+  document.getElementById('card-name').textContent=p.is_printer?'🖨 Printer':p.name;
+  document.getElementById('c-pid').textContent=p.id;
+  const plabel=p.pallet_label||'';
+  document.getElementById('c-label-row').style.display=plabel?'':'none';
+  document.getElementById('c-plabel').textContent=plabel;
+  document.getElementById('c-sku').textContent=p.sku||'—';
+  const sku2=p.sku2||'';const sku3=p.sku3||'';
+  document.getElementById('c-sku2-row').style.display=sku2?'':'none';
+  document.getElementById('c-sku2').textContent=sku2;
+  document.getElementById('c-sku3-row').style.display=sku3?'':'none';
+  document.getElementById('c-sku3').textContent=sku3;
+  document.getElementById('c-fill').textContent=p.is_printer?'N/A':p.fill+'%';
+  document.getElementById('c-units').textContent=p.units+' boxes';
+  document.getElementById('c-status').textContent=p.is_printer?'Central tracker':statusLabel(p.fill);
+  const bar=document.getElementById('card-bar');
+  bar.style.width=(p.is_printer?100:p.fill)+'%';
+  bar.style.background=p.is_printer?'#7b3ff5':fillHex(p.fill);
+  document.getElementById('info-card').style.display='block';
+}
+function doFlash(){const f=document.getElementById('flash');f.style.opacity='1';f.style.transition='none';setTimeout(()=>{f.style.transition='opacity .5s';f.style.opacity='0';},40);}
+
+// ── LEVEL FILTER ──────────────────────────────────────────────────────────────
+let levelFilter = null;  // null=all, 0=L1, 1=L2, 2=L3
+
+window.setLevelFilter = (lv) => {
+  levelFilter = lv;
+  meshMap.forEach((pd, mesh) => {
+    if (!pd || pd.is_printer || pd.isStorage || pd.isSpareParts) return;
+    mesh.visible = lv === null || pd.level === lv;
+  });
+  ['lf-all','lf-1','lf-2','lf-3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('act', i === 0 ? lv === null : lv === i - 1);
+  });
+  // Move camera to eye height for selected level
+  if(lv !== null && !orbitMode){
+    py = lv * LEVEL_H + 1.65;
+    updateCam();
+  } else if(lv === null && !orbitMode){
+    py = 1.65;
+    updateCam();
+  }
+};
+
+// ── PRINTER TRACKER MODAL ─────────────────────────────────────────────────────
+window.openPrinter = async () => {
+  document.getElementById('printer-ov').classList.add('open');
+  const rows = await fetch('/api/printer-items').then(r=>r.json());
+  document.getElementById('printer-slots').innerHTML = rows.map(r => `
+    <div class="si-row" style="grid-template-columns:32px 1fr 1fr 1fr 60px" id="pr-row-${r.row_num}">
+      <span class="si-num">${r.row_num}</span>
+      <input class="si-inp" id="pr-pid-${r.row_num}" value="${r.printer_id||''}" placeholder="Printer ID…">
+      <input class="si-inp" id="pr-lid-${r.row_num}" value="${r.laptop_id||''}" placeholder="Laptop ID…">
+      <input class="si-inp" id="pr-notes-${r.row_num}" value="${r.notes||''}" placeholder="Notes…">
+      <button class="si-save" onclick="savePrinterRow(${r.row_num})">Save</button>
+    </div>`).join('');
+};
+
+window.closePrinter = () => document.getElementById('printer-ov').classList.remove('open');
+
+window.savePrinterRow = async (n) => {
+  const btn = document.querySelector(`#pr-row-${n} .si-save`);
+  btn.textContent = '…'; btn.disabled = true;
+  await fetch(`/api/printer-items/${n}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      printer_id: document.getElementById(`pr-pid-${n}`).value,
+      laptop_id:  document.getElementById(`pr-lid-${n}`).value,
+      notes:      document.getElementById(`pr-notes-${n}`).value,
+    })
+  });
+  btn.textContent = '✓'; btn.style.background='#27ae60';
+  setTimeout(()=>{btn.textContent='Save';btn.style.background='';btn.disabled=false;}, 1200);
+};
+
+// ── PRINT LABEL ───────────────────────────────────────────────────────────────
+window.printPalletLabel = () => {
+  if (!lookedAt?.p) return;
+  const p = lookedAt.p;
+  const lvLabel = ['Ground (L1)', 'Middle (L2)', 'Top (L3)'][p.level] || `L${p.level+1}`;
+  const statusColors = { Full:'#27ae60', Medium:'#d4a800', Low:'#e74c3c', Empty:'#888' };
+  const status = p.fill===0?'Empty':p.fill<30?'Low':p.fill<60?'Medium':'Full';
+  const w = window.open('', '_blank', 'width=480,height=340');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Label — ${p.id}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;padding:24px;color:#111}
+  .outer{border:3px solid #1a1200;border-radius:12px;padding:20px 24px;max-width:420px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .pid{font-size:36px;font-weight:900;letter-spacing:1px;color:#1a1200;line-height:1}
+  .badge{background:#f5c800;color:#1a1200;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;letter-spacing:.5px}
+  .divider{border:none;border-top:2px solid #f0f0f0;margin:12px 0}
+  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}
+  .lbl{color:#999;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px}
+  .val{font-weight:700;color:#111;text-align:right;max-width:60%}
+  .status{font-size:12px;font-weight:800;padding:3px 10px;border-radius:20px;color:#fff;background:${statusColors[status]}}
+  .footer{margin-top:14px;font-size:10px;color:#ccc;text-align:center}
+  @media print{body{padding:0}.outer{border-radius:0;border:2px solid #000;max-width:100%}}
+</style></head><body>
+<div class="outer">
+  <div class="top">
+    <div class="pid">${p.id}</div>
+    <div class="badge">MEMORY BLOCK</div>
+  </div>
+  <hr class="divider">
+  <div class="row"><span class="lbl">Product</span><span class="val">${p.name||'—'}</span></div>
+  <div class="row"><span class="lbl">SKU</span><span class="val" style="font-family:monospace">${p.sku||'—'}</span></div>
+  <div class="row"><span class="lbl">Section</span><span class="val">Section ${p.section} · ${lvLabel}</span></div>
+  <div class="row"><span class="lbl">Fill</span><span class="val">${p.fill}% &nbsp;<span class="status">${status}</span></span></div>
+  <div class="row"><span class="lbl">Boxes</span><span class="val">${p.units}</span></div>
+  ${p.notes ? `<div class="row"><span class="lbl">Notes</span><span class="val">${p.notes}</span></div>` : ''}
+  <hr class="divider">
+  <div class="footer">Printed ${new Date().toLocaleString('en-AU')} · Cheltenham VIC</div>
+</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+// ── EDIT MODAL ────────────────────────────────────────────────────────────────
+window.openEdit=()=>{
+  if(!lookedAt)return;
+  const p=lookedAt.p;
+  document.getElementById('edit-title').textContent=p.is_printer?'Update Printer Units':'Edit pallet';
+  document.getElementById('edit-sub').textContent=p.id;
+  document.getElementById('ef-who').value=getSavedUser();
+  document.getElementById('ef-name').value=p.name||'';
+  document.getElementById('ef-sku').value=p.sku||'';
+  document.getElementById('ef-sku2').value=p.sku2||'';
+  document.getElementById('ef-sku3').value=p.sku3||'';
+  // SKU2 extra fields
+  const has2=!!(p.units2||p.units_per_box2);
+  document.getElementById('ef-units2').value=p.units2||'';
+  document.getElementById('ef-upb2').value=p.units_per_box2||'';
+  document.getElementById('ef-sku2-extra').style.display=has2?'block':'none';
+  document.getElementById('ef-sku2-toggle').textContent=has2?'− Hide boxes & units for SKU 2':'+ Add boxes & units for SKU 2';
+  // SKU3 extra fields
+  const has3=!!(p.units3||p.units_per_box3);
+  document.getElementById('ef-units3').value=p.units3||'';
+  document.getElementById('ef-upb3').value=p.units_per_box3||'';
+  document.getElementById('ef-sku3-extra').style.display=has3?'block':'none';
+  document.getElementById('ef-sku3-toggle').textContent=has3?'− Hide boxes & units for SKU 3':'+ Add boxes & units for SKU 3';
+  document.getElementById('ef-fill').value=p.fill;
+  document.getElementById('ef-units').value=p.units;
+  document.getElementById('ef-notes').value=p.notes||'';
+  document.getElementById('ef-upb').value=p.units_per_box||'';
+  document.getElementById('ef-refurb').value=p.refurbished_units||'';
+  // Show pallet label field only for L2/L3
+  const isL1 = p.level === 0;
+  document.getElementById('ef-label-row').style.display = isL1 ? 'none' : '';
+  document.getElementById('ef-label').value = p.pallet_label||'';
+
+  // Show capacity hint and wire auto-fill if capacity is known
+  const cap=p.max_units||0;
+  let capHint=document.getElementById('ef-cap-hint');
+  if(!capHint){
+    capHint=document.createElement('div');
+    capHint.id='ef-cap-hint';
+    capHint.style.cssText='font-size:11px;color:#888;margin-top:-6px;margin-bottom:6px;padding-left:2px';
+    document.getElementById('ef-units').parentNode.after(capHint);
+  }
+  capHint.textContent=cap>0?`Capacity: ${cap} boxes — fill % auto-updates as you type`:'Set fill to 100% once to lock in capacity';
+
+  const fillEl=document.getElementById('ef-fill');
+  const unitsEl=document.getElementById('ef-units');
+  // Replace listener each open so it uses the current pallet's capacity
+  unitsEl.oninput=cap>0?()=>{
+    const u=Math.max(0,parseInt(unitsEl.value)||0);
+    fillEl.value=Math.min(100,Math.round(u/cap*100));
+  }:null;
+
+  document.getElementById('edit-ov').classList.add('open');
+};
+window.closeEdit=()=>document.getElementById('edit-ov').classList.remove('open');
+window.toggleSkuExtra=n=>{
+  const el=document.getElementById(`ef-sku${n}-extra`);
+  const btn=document.getElementById(`ef-sku${n}-toggle`);
+  const open=el.style.display==='none';
+  el.style.display=open?'contents':'none';
+  btn.textContent=open?`− Hide boxes & units for SKU ${n}`:`+ Add boxes & units for SKU ${n}`;
+};
+window.saveEdit=async()=>{
+  if(!lookedAt)return;
+  const p=lookedAt.p;
+  const who=document.getElementById('ef-who').value.trim()||'Stock User';
+  setSavedUser(who);
+  const fill=Math.min(100,Math.max(0,parseInt(document.getElementById('ef-fill').value)||0));
+  const payload={
+    name:document.getElementById('ef-name').value,
+    sku:document.getElementById('ef-sku').value,
+    sku2:document.getElementById('ef-sku2').value,
+    sku3:document.getElementById('ef-sku3').value,
+    units2:parseInt(document.getElementById('ef-units2').value)||0,
+    units_per_box2:parseInt(document.getElementById('ef-upb2').value)||0,
+    units3:parseInt(document.getElementById('ef-units3').value)||0,
+    units_per_box3:parseInt(document.getElementById('ef-upb3').value)||0,
+    fill,units:parseInt(document.getElementById('ef-units').value)||0,
+    notes:document.getElementById('ef-notes').value,
+    units_per_box:parseInt(document.getElementById('ef-upb').value)||0,
+    refurbished_units:parseInt(document.getElementById('ef-refurb').value)||0,
+    pallet_label:document.getElementById('ef-label').value,
+    changed_by:who,
+  };
+  const res=await fetch(`/api/pallets/${encodeURIComponent(p.id)}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+  });
+  if(!res.ok){alert('Save failed.');return;}
+  const upd=(await res.json()).pallet;
+  Object.assign(p,upd);
+  if(p.is_printer){updatePrinterLabel(p.units);}
+  else{
+    const col=new THREE.Color(fillColor(p.fill));
+    if(p.fill>0){col.r=Math.min(1,col.r+.05);col.g=Math.min(1,col.g*.97+.02);col.b=Math.min(1,col.b*.9);}
+    lookedAt.mesh.material.color.copy(col);
+  }
+  showCard(p);updateStats();closeEdit();
+};
+
+// ── STORAGE ROOM MODAL ───────────────────────────────────────────────────────
+window.openStorage=async()=>{
+  document.getElementById('storage-ov').classList.add('open');
+  storageData=await fetch('/api/storage').then(r=>r.json());
+  renderStorageSlots();
+};
+window.closeStorage=()=>document.getElementById('storage-ov').classList.remove('open');
+
+// ── SPARE PARTS ───────────────────────────────────────────────────────────────
+let spareData=[];
+window.openSpare=async()=>{
+  document.getElementById('spare-ov').classList.add('open');
+  spareData=await fetch('/api/spare-parts').then(r=>r.json());
+  renderSpareSlots(spareData);
+};
+window.closeSpare=()=>document.getElementById('spare-ov').classList.remove('open');
+
+function renderSpareSlots(data){
+  const container=document.getElementById('spare-slots');
+  container.innerHTML=data.map(item=>`
+    <div class="si-row" id="sp-row-${item.slot}">
+      <span style="color:rgba(255,255,255,.4);font-size:11px;font-weight:700">${item.slot}</span>
+      <input id="sp-name-${item.slot}" type="text" value="${item.name||''}" placeholder="Part name">
+      <input id="sp-sku-${item.slot}" type="text" value="${item.sku||''}" placeholder="SKU">
+      <input id="sp-qty-${item.slot}" type="number" value="${item.quantity||0}" min="0" placeholder="Qty">
+      <input id="sp-notes-${item.slot}" type="text" value="${item.notes||''}" placeholder="Notes">
+      <button class="si-save" onclick="saveSpareSlot(${item.slot})">Save</button>
+    </div>
+  `).join('');
+}
+
+window.filterSpare=()=>{
+  const q=document.getElementById('spare-search').value.toLowerCase();
+  const filtered=q?spareData.filter(i=>(i.name||'').toLowerCase().includes(q)||(i.sku||'').toLowerCase().includes(q)):spareData;
+  renderSpareSlots(filtered);
+};
+
+window.saveSpareSlot=async(slot)=>{
+  const payload={
+    name:document.getElementById(`sp-name-${slot}`).value,
+    sku:document.getElementById(`sp-sku-${slot}`).value,
+    quantity:parseInt(document.getElementById(`sp-qty-${slot}`).value)||0,
+    notes:document.getElementById(`sp-notes-${slot}`).value,
+  };
+  const res=await fetch(`/api/spare-parts/${slot}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+  });
+  if(res.ok){
+    const btn=document.querySelector(`#sp-row-${slot} .si-save`);
+    btn.textContent='✓';btn.style.background='#27ae60';
+    setTimeout(()=>{btn.textContent='Save';btn.style.background='';},1500);
+    const idx=spareData.findIndex(x=>x.slot===slot);
+    if(idx>=0) Object.assign(spareData[idx],payload);
+  }
+};
+
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+window.logout=async()=>{
+  await fetch('/api/auth/logout',{method:'POST'});
+  window.location.href='/';
+};
+
+function renderStorageSlots(){
+  const container=document.getElementById('storage-slots');
+  container.innerHTML=storageData.map(item=>`
+    <div class="si-row" id="si-row-${item.slot}">
+      <span style="color:rgba(255,255,255,.4);font-size:11px;font-weight:700">${item.slot}</span>
+      <input id="si-name-${item.slot}" type="text" value="${item.name||''}" placeholder="Product name">
+      <input id="si-sku-${item.slot}" type="text" value="${item.sku||''}" placeholder="SKU">
+      <input id="si-qty-${item.slot}" type="number" value="${item.quantity||0}" min="0" placeholder="Qty">
+      <input id="si-notes-${item.slot}" type="text" value="${item.notes||''}" placeholder="Notes">
+      <button class="si-save" onclick="saveStorageSlot(${item.slot})">Save</button>
+    </div>
+  `).join('');
+}
+
+window.saveStorageSlot=async(slot)=>{
+  const payload={
+    name:document.getElementById(`si-name-${slot}`).value,
+    sku:document.getElementById(`si-sku-${slot}`).value,
+    quantity:parseInt(document.getElementById(`si-qty-${slot}`).value)||0,
+    notes:document.getElementById(`si-notes-${slot}`).value,
+  };
+  const res=await fetch(`/api/storage/${slot}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+  });
+  if(res.ok){
+    const btn=document.querySelector(`#si-row-${slot} .si-save`);
+    btn.textContent='✓';btn.style.background='#27ae60';
+    setTimeout(()=>{btn.textContent='Save';btn.style.background='';},1500);
+  }
+};
+
+// ── BULK EDIT ─────────────────────────────────────────────────────────────────
+let bulkMode=false;
+const bulkSel=new Set();
+window.toggleBulk=()=>{
+  bulkMode=!bulkMode;
+  document.getElementById('bulk-btn').classList.toggle('act',bulkMode);
+  document.getElementById('bulk-bar').style.display=bulkMode?'flex':'none';
+  if(bulkMode) document.getElementById('bk-name').value=getSavedUser();
+  if(!bulkMode)clearBulk();
+};
+window.clearBulk=()=>{
+  bulkSel.forEach(id=>{
+    meshMap.forEach((p,mesh)=>{
+      if(p.id===id){
+        const col=new THREE.Color(fillColor(p.fill));
+        if(p.fill>0){col.r=Math.min(1,col.r+.05);col.g=Math.min(1,col.g*.97+.02);col.b=Math.min(1,col.b*.9);}
+        mesh.material.color.copy(col);mesh.material.emissive.set(0);mesh.material.emissiveIntensity=0;
+      }
+    });
+  });
+  bulkSel.clear();updateBulkCount();
+};
+function updateBulkCount(){document.getElementById('bulk-count').textContent=`${bulkSel.size} selected`;}
+window.applyBulk=async()=>{
+  if(!bulkSel.size){alert('No pallets selected.');return;}
+  const who=document.getElementById('bk-name').value.trim()||'Stock User (Bulk)';
+  setSavedUser(who);
+  const fill=document.getElementById('bk-fill').value;
+  const sku=document.getElementById('bk-sku').value.trim();
+  const updates={};
+  if(fill!=='')updates.fill=parseInt(fill);
+  if(sku!=='')updates.sku=sku;
+  if(!Object.keys(updates).length){alert('Enter fill % or SKU.');return;}
+  const res=await fetch('/api/pallets/bulk',{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids:[...bulkSel],...updates,changed_by:who})
+  });
+  const data=await res.json();
+  if(!data.success){alert('Bulk update failed.');return;}
+  const fresh=await fetch('/api/pallets').then(r=>r.json());
+  palletsData.length=0;fresh.forEach(p=>palletsData.push(p));
+  meshMap.forEach((p,mesh)=>{
+    if(p.isStorage)return;
+    const upd=palletsData.find(x=>x.id===p.id);
+    if(upd){
+      Object.assign(p,upd);
+      const col=new THREE.Color(fillColor(p.fill,p.is_printer));
+      if(p.fill>0&&!p.is_printer){col.r=Math.min(1,col.r+.05);col.g=Math.min(1,col.g*.97+.02);col.b=Math.min(1,col.b*.9);}
+      mesh.material.color.copy(col);mesh.material.emissive.set(0);mesh.material.emissiveIntensity=0;
+    }
+  });
+  alert(`✓ ${who} updated ${data.updated} pallets.`);
+  clearBulk();updateStats();
+};
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+window.showAudit=async()=>{
+  document.getElementById('audit-ov').classList.add('open');
+  const tbody=document.getElementById('audit-body');
+  tbody.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:#999">Loading…</td></tr>';
+  const rows=await fetch('/api/audit?limit=200').then(r=>r.json());
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:#999">No changes yet.</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td style="white-space:nowrap;color:#888;padding:7px 12px">${r.changed_at}</td>
+    <td style="font-weight:600;padding:7px 12px">${r.pallet_id}</td>
+    <td style="padding:7px 12px;color:#185FA5;font-weight:600">${r.changed_by}</td>
+    <td style="color:#555;padding:7px 12px">${r.field}</td>
+    <td style="color:#e74c3c;padding:7px 12px">${r.old_value}</td>
+    <td style="color:#27ae60;padding:7px 12px">${r.new_value}</td>
+  </tr>`).join('');
+};
+window.closeAudit=()=>document.getElementById('audit-ov').classList.remove('open');
+
+window.exportXLSX=()=>window.location.href='/api/export/xlsx';
+
+// ── STATS ─────────────────────────────────────────────────────────────────────
+function updateStats(){
+  fetch('/api/stats').then(r=>r.json()).then(s=>{
+    document.getElementById('st-total').textContent=s.total;
+    document.getElementById('st-full').textContent=s.full;
+    document.getElementById('st-med').textContent=s.medium||0;
+    document.getElementById('st-low').textContent=s.low;
+    document.getElementById('st-empty').textContent=s.empty;
+    document.getElementById('st-printer').textContent=s.printer_units||0;
+  });
+}
+
+// ── MINIMAP ───────────────────────────────────────────────────────────────────
+const mmC=document.getElementById('mm'),mmCtx=mmC.getContext('2d');
+const MM_W=280, MM_H=280;
+
+// Padding in world units so nothing clips the edge
+const MM_PAD=0.8;
+const _mww=WORLD_W+MM_PAD*2, _mwh=WORLD_Z+MM_PAD*2;
+
+// World → canvas pixel
+function wx(x){return ((x-X_LEFT_WALL+MM_PAD)/_mww)*MM_W;}
+function wz(z){return ((z+MM_PAD)/_mwh)*MM_H;}
+function wdx(d){return (d/_mww)*MM_W;}  // width in world units → px
+function wdz(d){return (d/_mwh)*MM_H;}  // depth in world units → px
+
+document.getElementById('mm').addEventListener('click',e=>{
+  const rect=mmC.getBoundingClientRect();
+  const fx=(e.clientX-rect.left)/rect.width;
+  const fz=(e.clientY-rect.top)/rect.height;
+  const mx=fx*_mww+X_LEFT_WALL-MM_PAD;
+  const mz=fz*_mwh-MM_PAD;
+  const ai=AISLE_CENTERS.reduce((b,ac,i)=>Math.abs(ac-mx)<Math.abs(AISLE_CENTERS[b]-mx)?i:b,0);
+  px=AISLE_CENTERS[ai];pz=Math.max(.5,Math.min(WORLD_Z-.5,mz));
+  orbitMode=false;document.getElementById('orb-btn').classList.remove('act');
+  updateCam();
+});
+
+function drawMinimap(){
+  mmCtx.clearRect(0,0,MM_W,MM_H);
+
+  // Background
+  mmCtx.fillStyle='#080810';mmCtx.fillRect(0,0,MM_W,MM_H);
+
+  // Wall zones (left and right of racks)
+  mmCtx.fillStyle='rgba(255,255,255,.04)';
+  mmCtx.fillRect(0,0,wx(X_LEFT_WALL+.3),MM_H);
+  mmCtx.fillRect(wx(X_RIGHT_WALL-.3),0,MM_W-wx(X_RIGHT_WALL-.3),MM_H);
+
+  // Aisle corridors
+  AISLE_BOUNDS.forEach(([mn,mx])=>{
+    mmCtx.fillStyle='rgba(255,255,255,.07)';
+    mmCtx.fillRect(wx(mn),0,wdx(mx-mn),MM_H);
+  });
+
+  // Back-to-back dead zones (solid wall between B/C and D/E)
+  [[X_BC_MID-.15,X_BC_MID+.15],[X_DE_MID-.15,X_DE_MID+.15]].forEach(([a,b])=>{
+    mmCtx.fillStyle='rgba(255,255,255,.06)';
+    mmCtx.fillRect(wx(a),0,wdx(b-a),MM_H);
+  });
+
+  // Entry cross-corridor line
+  const entryZ=PRINTER_Z-.5;
+  mmCtx.strokeStyle='rgba(255,255,255,.12)';mmCtx.lineWidth=1;
+  mmCtx.beginPath();mmCtx.moveTo(0,wz(entryZ));mmCtx.lineTo(MM_W,wz(entryZ));mmCtx.stroke();
+
+  // Draw rack sections
+  const sections=[
+    {sec:'A',faceX:X_A_FACE,rackX:X_A_FACE+RACK_D},
+    {sec:'B',faceX:X_B_FACE,rackX:X_B_FACE-RACK_D},
+    {sec:'C',faceX:X_C_FACE,rackX:X_C_FACE+RACK_D},
+    {sec:'D',faceX:X_D_FACE,rackX:X_D_FACE-RACK_D},
+    {sec:'E',faceX:X_E_FACE,rackX:X_E_FACE+RACK_D},
+    {sec:'F',faceX:X_F_FACE,rackX:X_F_FACE-RACK_D},
+  ];
+  sections.forEach(({sec,faceX,rackX})=>{
+    const numSegs=SEG_COUNTS[sec];
+    const x1=wx(Math.min(faceX,rackX)), x2=wx(Math.max(faceX,rackX));
+    const rw=x2-x1;
+    for(let seg=0;seg<numSegs;seg++){
+      const z0=wz(seg*SEG_UNIT);
+      const zh=wdz(SEG_D*SLOTS);
+      const maxFill=Math.max(...[0,1].flatMap(sl=>[0,1,2].map(lv=>getP(sec,seg,sl,lv)?.fill||0)));
+      mmCtx.fillStyle=maxFill>=60?'#27ae60':maxFill>=30?'#c9a000':maxFill>0?'#c0392b':'#1e2228';
+      mmCtx.fillRect(x1,z0,rw,zh);
+      // Thin gap line between segments
+      mmCtx.fillStyle='rgba(0,0,0,.55)';
+      mmCtx.fillRect(x1,z0+zh,rw,wdz(SEG_GAP));
+    }
+    // Section label centred in the section's Z span
+    const midZ=wz(numSegs*SEG_UNIT/2);
+    const midX=(x1+x2)/2;
+    mmCtx.fillStyle='rgba(245,200,0,.95)';
+    mmCtx.font='bold 8px monospace';mmCtx.textAlign='center';mmCtx.textBaseline='middle';
+    mmCtx.fillText(sec,midX,midZ);
+  });
+
+  // Printer block
+  mmCtx.fillStyle='#7b3ff5';
+  mmCtx.fillRect(wx(PRINTER_X-1.6),wz(PRINTER_Z-.9),wdx(3.2),wdz(1.8));
+  mmCtx.fillStyle='rgba(245,200,0,.7)';mmCtx.font='bold 7px monospace';
+  mmCtx.textAlign='center';mmCtx.textBaseline='middle';
+  mmCtx.fillText('P',wx(PRINTER_X),wz(PRINTER_Z));
+
+  // Storage block
+  mmCtx.fillStyle='#2d6a4f';
+  mmCtx.fillRect(wx(STORAGE_X-1.4),wz(STORAGE_Z-.9),wdx(2.8),wdz(1.8));
+  mmCtx.fillStyle='rgba(255,255,255,.7)';mmCtx.font='bold 7px monospace';
+  mmCtx.textAlign='center';mmCtx.textBaseline='middle';
+  mmCtx.fillText('S',wx(STORAGE_X),wz(STORAGE_Z));
+
+  // Spare parts block
+  mmCtx.fillStyle='#1f5fa6';
+  mmCtx.fillRect(wx(SPARE_X-1.4),wz(SPARE_Z-.9),wdx(2.8),wdz(1.8));
+  mmCtx.fillStyle='rgba(255,255,255,.7)';mmCtx.font='bold 7px monospace';
+  mmCtx.textAlign='center';mmCtx.textBaseline='middle';
+  mmCtx.fillText('SP',wx(SPARE_X),wz(SPARE_Z));
+
+  // "ENTRY" label at bottom
+  mmCtx.fillStyle='rgba(255,255,255,.2)';mmCtx.font='7px monospace';
+  mmCtx.textAlign='center';mmCtx.textBaseline='bottom';
+  mmCtx.fillText('▼ ENTRY',MM_W/2,MM_H-2);
+
+  // Outer border
+  mmCtx.strokeStyle='rgba(255,255,255,.18)';mmCtx.lineWidth=1;
+  mmCtx.strokeRect(.5,.5,MM_W-1,MM_H-1);
+
+  // Player dot + direction arrow
+  const ppx=wx(px),ppz=wz(pz);
+  const arLen=10;
+  mmCtx.strokeStyle='#f5c800';mmCtx.lineWidth=1.5;
+  mmCtx.beginPath();mmCtx.moveTo(ppx,ppz);
+  mmCtx.lineTo(ppx+Math.sin(yaw)*arLen,ppz+Math.cos(yaw)*arLen);mmCtx.stroke();
+  mmCtx.fillStyle='#fff';
+  mmCtx.beginPath();mmCtx.arc(ppx,ppz,3.5,0,Math.PI*2);mmCtx.fill();
+  mmCtx.strokeStyle='#f5c800';mmCtx.lineWidth=1;mmCtx.stroke();
+
+  // Orbit crosshair
+  if(orbitMode){
+    const ox=wx(orbitTarget.x),oz=wz(orbitTarget.z);
+    mmCtx.strokeStyle='rgba(245,200,0,.6)';mmCtx.lineWidth=1;
+    mmCtx.beginPath();mmCtx.moveTo(ox-6,oz);mmCtx.lineTo(ox+6,oz);mmCtx.stroke();
+    mmCtx.beginPath();mmCtx.moveTo(ox,oz-6);mmCtx.lineTo(ox,oz+6);mmCtx.stroke();
+  }
+}
+
+// ── RENDER LOOP ───────────────────────────────────────────────────────────────
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const s=WSPD*2;
+  if(!orbitMode){
+    if(keys['ArrowUp']||keys['KeyW']){const r=clamp(px+Math.sin(yaw)*s,pz+Math.cos(yaw)*s);px=r.x;pz=r.z;updateCam();}
+    if(keys['ArrowDown']||keys['KeyS']){const r=clamp(px-Math.sin(yaw)*s,pz-Math.cos(yaw)*s);px=r.x;pz=r.z;updateCam();}
+    if(keys['ArrowLeft']||keys['KeyA']){yaw-=TSPD;updateCam();}
+    if(keys['ArrowRight']||keys['KeyD']){yaw+=TSPD;updateCam();}
+  } else {updateOrbit();}
+  drawMinimap();
+  renderer.render(scene,camera);
+}
+
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+px=X_AISLE1_C;py=1.65;pz=2.0;
+updateCam();
+
+// ── USERNAME PERSISTENCE ──────────────────────────────────────────────────────
+const USR_KEY='mb_username';
+function getSavedUser(){ return localStorage.getItem(USR_KEY)||''; }
+function setSavedUser(n){ if(n&&n!=='Stock User'&&n!=='Stock User (Bulk)') localStorage.setItem(USR_KEY,n); }
+
+function refreshUserBadge(){
+  const n=getSavedUser();
+  document.getElementById('usr-name-lbl').textContent=n||'set name';
+}
+
+window.promptUsername=()=>{
+  const cur=getSavedUser();
+  const n=(prompt('Your name (saved for this browser):',cur)||'').trim();
+  if(n){ setSavedUser(n); refreshUserBadge(); }
+};
+
+refreshUserBadge();
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+let _srTimer=null;
+let _hlMeshes=[];
+
+function clearHighlights(){
+  _hlMeshes.forEach(({mesh,col,em,ei})=>{
+    mesh.material.color.copy(col);
+    mesh.material.emissive.copy(em);
+    mesh.material.emissiveIntensity=ei;
+  });
+  _hlMeshes=[];
+}
+
+window.openSearch=()=>{
+  document.getElementById('search-ov').classList.add('open');
+  document.getElementById('search-inp').value='';
+  document.getElementById('search-results').innerHTML='<div class="sr-empty">Start typing to search…</div>';
+  setTimeout(()=>document.getElementById('search-inp').focus(),60);
+};
+window.closeSearch=()=>{
+  document.getElementById('search-ov').classList.remove('open');
+  clearHighlights();
+};
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeSearch();
+});
+
+window.runSearch=()=>{
+  clearTimeout(_srTimer);
+  _srTimer=setTimeout(async()=>{
+    const q=document.getElementById('search-inp').value.trim();
+    const res=document.getElementById('search-results');
+    if(q.length<2){res.innerHTML='<div class="sr-empty">Type at least 2 characters…</div>';return;}
+    const data=await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r=>r.json());
+    if(!data.length){res.innerHTML='<div class="sr-empty">No results found.</div>';return;}
+    res.innerHTML=data.map(p=>{
+      const fc=p.fill===0?'#888':p.fill<30?'#e74c3c':p.fill<60?'#f5c800':'#27ae60';
+      return `<div class="sr-item" onclick="jumpToResult('${p.id}')">
+        <span class="sr-id">${p.id}</span>
+        <span class="sr-name" title="${p.name}">${p.name}</span>
+        <span class="sr-sku">${p.sku}</span>
+        <span class="sr-fill" style="color:${fc}">${p.fill}%</span>
+        <span class="sr-sec">${p.section}</span>
+      </div>`;
+    }).join('');
+  },200);
+};
+
+window.jumpToResult=(pid)=>{
+  const p=palletsData.find(x=>x.id===pid);
+  if(!p) return;
+  // Determine which aisle to stand in
+  const aisleX={A:X_AISLE1_C,B:X_AISLE1_C,C:X_AISLE2_C,D:X_AISLE2_C,E:X_AISLE3_C,F:X_AISLE3_C};
+  px=aisleX[p.section]||X_AISLE1_C;
+  py=1.65;
+  pz=Math.max(0.5,Math.min(WORLD_Z-0.5, p.segment*SEG_UNIT + p.slot*SEG_D + SEG_D/2));
+  orbitMode=false;
+  document.getElementById('orb-btn').classList.remove('act');
+  updateCam();
+  lookedAt={p, mesh:null};
+  // Find the mesh
+  meshMap.forEach((pd,mesh)=>{
+    if(pd&&pd.id===pid) lookedAt.mesh=mesh;
+  });
+  showCard(p);
+  // Highlight it
+  clearHighlights();
+  meshMap.forEach((pd,mesh)=>{
+    if(pd&&pd.id===pid){
+      _hlMeshes.push({mesh,col:mesh.material.color.clone(),em:mesh.material.emissive.clone(),ei:mesh.material.emissiveIntensity});
+      mesh.material.emissive=new THREE.Color(0xffffff);
+      mesh.material.emissiveIntensity=0.9;
+      mesh.material.color.set(0xf5c800);
+    }
+  });
+  closeSearch();
+  setTimeout(clearHighlights,4000);
+};
+
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Block — Warehouse</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0c;font-family:'Segoe UI',system-ui,sans-serif;color:#fff;
+  height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#pin-wrap{display:flex;flex-direction:column;align-items:center;gap:0}
+#logo{font-size:13px;font-weight:800;letter-spacing:3px;color:#f5c800;
+  text-transform:uppercase;margin-bottom:8px}
+#tagline{font-size:12px;color:rgba(255,255,255,.35);margin-bottom:36px;letter-spacing:.5px}
+#dots{display:flex;gap:16px;margin-bottom:36px;height:16px;align-items:center}
+.dot{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.18);
+  transition:background .15s,transform .15s}
+.dot.filled{background:#f5c800;transform:scale(1.15)}
+#pad{display:grid;grid-template-columns:repeat(3,80px);gap:14px}
+.key{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);color:#fff;font-size:22px;font-weight:500;
+  cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;
+  user-select:none}
+.key:hover{background:rgba(255,255,255,.15);transform:scale(1.04)}
+.key:active{background:rgba(245,200,0,.25);border-color:rgba(245,200,0,.5);transform:scale(.96)}
+.key.del{font-size:16px;color:rgba(255,255,255,.5)}
+.key.empty{visibility:hidden;pointer-events:none}
+#err{height:18px;font-size:12px;color:#e74c3c;text-align:center;margin-top:-20px;margin-bottom:8px;
+  opacity:0;transition:opacity .2s}
+#err.show{opacity:1}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+#dots.shake{animation:shake .35s ease}
+</style>
+</head>
+<body>
+<div id="pin-wrap">
+  <div id="logo">Memory Block</div>
+  <div id="tagline">Warehouse · Cheltenham VIC</div>
+  <div id="dots">
+    <div class="dot" id="d0"></div>
+    <div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+  <div id="err" id="err-msg">Incorrect PIN</div>
+  <div id="pad">
+    <div class="key" onclick="press('1')">1</div>
+    <div class="key" onclick="press('2')">2</div>
+    <div class="key" onclick="press('3')">3</div>
+    <div class="key" onclick="press('4')">4</div>
+    <div class="key" onclick="press('5')">5</div>
+    <div class="key" onclick="press('6')">6</div>
+    <div class="key" onclick="press('7')">7</div>
+    <div class="key" onclick="press('8')">8</div>
+    <div class="key" onclick="press('9')">9</div>
+    <div class="key empty"></div>
+    <div class="key" onclick="press('0')">0</div>
+    <div class="key del" onclick="del()">⌫</div>
+  </div>
+</div>
+
+<script>
+let pin='';
+function press(d){
+  if(pin.length>=4) return;
+  pin+=d;
+  updateDots();
+  if(pin.length===4) submit();
+}
+function del(){
+  pin=pin.slice(0,-1);
+  updateDots();
+}
+function updateDots(){
+  for(let i=0;i<4;i++)
+    document.getElementById('d'+i).classList.toggle('filled',i<pin.length);
+}
+async function submit(){
+  const res=await fetch('/api/auth/pin',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pin})
+  });
+  if(res.ok){
+    window.location.href='/';
+  } else {
+    const dots=document.getElementById('dots');
+    const err=document.getElementById('err');
+    dots.classList.add('shake');
+    err.classList.add('show');
+    setTimeout(()=>{
+      dots.classList.remove('shake');
+      err.classList.remove('show');
+      pin='';updateDots();
+    },600);
+  }
+}
+document.addEventListener('keydown',e=>{
+  if(e.key>='0'&&e.key<='9') press(e.key);
+  if(e.key==='Backspace') del();
+});
+</script>
+</body>
+</html>

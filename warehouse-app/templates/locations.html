@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Block — Location Assignments</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f0f2f5;font-family:'Segoe UI',system-ui,sans-serif;color:#111;min-height:100vh}
+
+header{background:#1a1200;padding:0 28px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.35)}
+.logo{font-size:11px;font-weight:800;letter-spacing:3px;color:#f5c800;text-transform:uppercase}
+.header-right{display:flex;gap:8px;align-items:center}
+.btn{border:none;border-radius:8px;padding:7px 15px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-back{background:#f5c800;color:#1a1200}.btn-back:hover{background:#ffd700}
+.btn-sec{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15)}.btn-sec:hover{background:rgba(255,255,255,.18)}
+
+main{display:grid;grid-template-columns:1fr 340px;gap:20px;max-width:1400px;margin:0 auto;padding:24px 20px 48px}
+
+/* ── Progress bar ── */
+.progress-bar{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.07);grid-column:1/-1}
+.pb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.pb-title{font-size:13px;font-weight:700;color:#444}
+.pb-count{font-size:13px;color:#27ae60;font-weight:700}
+.pb-track{height:10px;background:#eee;border-radius:5px;overflow:hidden}
+.pb-fill{height:100%;background:linear-gradient(90deg,#27ae60,#52d68a);border-radius:5px;transition:width .4s}
+
+/* ── Grid panel ── */
+.grid-panel{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden}
+.panel-hdr{padding:14px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.panel-hdr h2{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#444}
+.legend{display:flex;gap:12px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#888}
+.leg-dot{width:10px;height:10px;border-radius:3px}
+
+.grid-wrap{padding:16px 20px;overflow-x:auto}
+.loc-grid{border-collapse:collapse;font-size:12px;min-width:600px}
+.loc-grid th{padding:6px 10px;text-align:center;font-size:10px;font-weight:800;letter-spacing:.5px;color:#aaa;text-transform:uppercase;background:#fafafa;border-bottom:2px solid #eee;white-space:nowrap}
+.loc-grid th.sec-hdr{background:#1a1200;color:#f5c800;font-size:11px;letter-spacing:1px;padding:8px 10px}
+.loc-grid td{padding:3px 4px;vertical-align:top}
+.seg-lbl{color:#bbb;font-size:10px;font-weight:700;padding:4px 8px;text-align:right;white-space:nowrap}
+
+.pallet-cell{border-radius:8px;padding:6px 8px;cursor:pointer;transition:all .15s;border:2px solid transparent;min-width:100px;min-height:52px;display:flex;flex-direction:column;justify-content:center}
+.pallet-cell:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.pallet-cell.assigned{background:#e8f8ef;border-color:#b8e8cc}
+.pallet-cell.assigned:hover{background:#d4f4e4;border-color:#27ae60}
+.pallet-cell.unassigned{background:#f5f5f5;border-color:#e8e8e8}
+.pallet-cell.unassigned:hover{background:#fff;border-color:#f5c800}
+.pallet-cell.selected{border-color:#f5c800!important;background:#fffbe6!important;box-shadow:0 0 0 3px rgba(245,200,0,.2)!important}
+.pallet-cell.empty-slot{background:transparent;border:none;cursor:default;min-height:52px}
+
+.cell-id{font-size:9px;color:#aaa;font-weight:700;margin-bottom:2px}
+.cell-sku{font-size:10px;color:#27ae60;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
+.cell-name{font-size:10px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin-top:1px}
+.cell-empty{font-size:10px;color:#ccc}
+
+/* ── Side panel ── */
+.side-panel{display:flex;flex-direction:column;gap:16px}
+.assign-box{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden;position:sticky;top:74px}
+.assign-hdr{padding:14px 18px;background:#1a1200;color:#f5c800;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.assign-body{padding:16px 18px}
+.sel-pallet{font-size:18px;font-weight:800;color:#111;margin-bottom:2px}
+.sel-sub{font-size:11px;color:#aaa;margin-bottom:14px}
+.afield{margin-bottom:12px}
+.afield label{display:block;font-size:10px;font-weight:800;letter-spacing:.5px;color:#aaa;text-transform:uppercase;margin-bottom:5px}
+.afield input{width:100%;background:#f5f6f8;border:1px solid #e8e8e8;border-radius:8px;padding:9px 12px;font-size:13px;color:#111;font-family:inherit}
+.afield input:focus{outline:none;border-color:#f5c800;background:#fff}
+.assign-btn{width:100%;background:#f5c800;color:#1a1200;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:4px}
+.assign-btn:hover{background:#ffd700}
+.clear-btn{width:100%;background:rgba(231,76,60,.08);color:#e74c3c;border:1px solid rgba(231,76,60,.2);border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+.clear-btn:hover{background:rgba(231,76,60,.14)}
+.no-selection{padding:32px 18px;text-align:center;color:#ccc;font-size:13px;line-height:1.6}
+
+/* Suggestions dropdown */
+.suggest-wrap{position:relative}
+.suggest-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e8e8e8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:50;max-height:200px;overflow-y:auto;display:none}
+.suggest-list.open{display:block}
+.suggest-item{padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f5f5f5}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item:hover{background:#fafafa}
+.suggest-sku{font-weight:700;color:#111}
+.suggest-name{color:#888;font-size:11px;margin-top:1px}
+
+/* Stats panel */
+.stats-box{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:16px 18px}
+.stats-box h3{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:12px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:12px}
+.stat-row:last-child{border-bottom:none}
+.stat-lbl{color:#666}
+.stat-val{font-weight:700;color:#111}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1200;color:#f5c800;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:all .3s;z-index:999}
+.toast.show{transform:translateY(0);opacity:1}
+
+@media(max-width:900px){main{grid-template-columns:1fr}.assign-box{position:static}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Memory Block · Location Assignments</div>
+  <div class="header-right">
+    <a class="btn btn-back" href="/">← 3D View</a>
+    <a class="btn btn-sec" href="/dashboard">Dashboard</a>
+    <a class="btn btn-sec" href="/sheet">📋 Sheet</a>
+  </div>
+</header>
+
+<main>
+  <!-- Progress bar spans full width -->
+  <div class="progress-bar">
+    <div class="pb-top">
+      <span class="pb-title">L1 Assignment Progress</span>
+      <span class="pb-count" id="pb-count">Loading…</span>
+    </div>
+    <div class="pb-track"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-panel">
+    <div class="panel-hdr">
+      <h2>L1 Pallets — Click to assign</h2>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#e8f8ef;border:1px solid #27ae60"></div>Assigned</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#f5f5f5;border:1px solid #ddd"></div>Unassigned</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#fffbe6;border:1px solid #f5c800"></div>Selected</div>
+      </div>
+    </div>
+    <div class="grid-wrap">
+      <table class="loc-grid" id="loc-grid"></table>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+    <!-- Assignment form -->
+    <div class="assign-box">
+      <div class="assign-hdr">Assign Product</div>
+      <div id="assign-body">
+        <div class="no-selection">👆 Click any L1 pallet on the grid to assign a product to it</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-box">
+      <h3>Summary</h3>
+      <div class="stat-row"><span class="stat-lbl">Total L1 pallets</span><span class="stat-val" id="st-total">—</span></div>
+      <div class="stat-row"><span class="stat-lbl">Assigned</span><span class="stat-val" style="color:#27ae60" id="st-assigned">—</span></div>
+      <div class="stat-row"><span class="stat-lbl">Unassigned</span><span class="stat-val" style="color:#e74c3c" id="st-unassigned">—</span></div>
+      <div class="stat-row"><span class="stat-lbl">Unique SKUs assigned</span><span class="stat-val" id="st-skus">—</span></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Sections ordered left→right as seen standing at printer looking INTO warehouse:
+// F = left wall, then E,D back-to-back, then C,B back-to-back, then A = right wall
+const SECTIONS     = ['F','E','D','C','B','A'];
+const SEG_COUNTS   = {A:11,B:8,C:8,D:8,E:8,F:7};
+const MAX_SEGS     = 11;
+
+let pallets     = [];   // L1 pallet objects from API
+let assignments = {};   // pallet_id → assignment object
+let allSkus     = [];   // unique SKUs from assignments for suggestions
+let selected    = null; // currently selected pallet_id
+
+// ── Load ─────────────────────────────────────────────────────────────────────
+async function load() {
+  const r = await fetch('/api/locations');
+  if (!r.ok) { alert('Failed to load — are you logged in?'); return; }
+  const data  = await r.json();
+  pallets     = data.pallets;
+  assignments = data.assignments;
+  buildSkuList();
+  renderGrid();
+  updateStats();
+}
+
+function buildSkuList() {
+  const seen = new Map();
+  Object.values(assignments).forEach(a => {
+    if (a.sku) seen.set(a.sku, a.product_name);
+  });
+  allSkus = [...seen.entries()].map(([sku, name]) => ({sku, name}));
+}
+
+// ── Grid ─────────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('loc-grid');
+
+  // Header row 1: entry banner
+  const totalCols = SECTIONS.length * 2 + 1;
+  let thead = `<thead>
+    <tr><td colspan="${totalCols}" style="padding:8px 12px;background:#fff3cd;text-align:center;font-size:11px;font-weight:700;color:#856404;letter-spacing:.5px;border-bottom:2px solid #f5c800">
+      🖨 PRINTER / ENTRY END — S1 rows are the first pallets you reach walking in
+    </td></tr>
+    <tr><th style="width:42px"></th>`;
+  // Section headers with wall labels
+  const secLabels = {F:'LEFT WALL',E:'',D:'',C:'',B:'',A:'RIGHT WALL'};
+  SECTIONS.forEach(sec => {
+    const lbl = secLabels[sec] ? `<div style="font-size:8px;opacity:.6;margin-top:1px">${secLabels[sec]}</div>` : '';
+    thead += `<th class="sec-hdr" colspan="2">${sec}${lbl}</th>`;
+  });
+  thead += `</tr><tr><th class="seg-lbl" style="padding:4px 8px;text-align:right;color:#aaa;font-size:9px">SEG</th>`;
+  // P2 left, P1 right — P1 is first pallet reached from entry within each segment
+  SECTIONS.forEach(() => {
+    thead += '<th style="font-size:9px;color:#aaa;padding:4px 6px;background:#fafafa">P2</th><th style="font-size:9px;color:#f5c800;padding:4px 6px;background:#fafafa;font-weight:800">P1 ★</th>';
+  });
+  thead += '</tr></thead>';
+
+  // Body: S1 at top (printer/entry end), increasing southward
+  let tbody = '<tbody>';
+  for (let seg = 1; seg <= MAX_SEGS; seg++) {
+    const rowStyle = seg === 1 ? 'background:#fffdf0' : '';
+    tbody += `<tr style="${rowStyle}"><td class="seg-lbl">S${seg}</td>`;
+    SECTIONS.forEach(sec => {
+      const numSegs = SEG_COUNTS[sec];
+      if (seg > numSegs) {
+        tbody += '<td></td><td></td>';
+        return;
+      }
+      const dbSeg = numSegs - seg;
+      // P2 (slot=0) on left, P1 (slot=1) on right — matches physical entry order
+      [0, 1].forEach(slot => {
+        const p = pallets.find(p => p.section === sec && p.segment === dbSeg && p.slot === slot);
+        if (!p) { tbody += '<td></td>'; return; }
+        const asgn  = assignments[p.id];
+        const cls   = asgn ? 'assigned' : 'unassigned';
+        const selCls= selected === p.id ? ' selected' : '';
+        tbody += `<td>
+          <div class="pallet-cell ${cls}${selCls}" onclick="selectPallet('${p.id}')" id="cell-${p.id}">
+            <div class="cell-id">${p.id}</div>
+            ${asgn
+              ? `<div class="cell-sku">${[asgn.sku, asgn.sku2, asgn.sku3].filter(Boolean).join(' + ')}</div>
+                 <div class="cell-name">${asgn.product_name}${asgn.product_name2 ? ' / '+asgn.product_name2 : ''}</div>`
+              : `<div class="cell-empty">Unassigned</div>`}
+          </div>
+        </td>`;
+      });
+    });
+    tbody += '</tr>';
+  }
+  tbody += '</tbody>';
+
+  grid.innerHTML = thead + tbody;
+}
+
+// ── Select pallet ─────────────────────────────────────────────────────────────
+function selectPallet(pid) {
+  // Deselect previous
+  if (selected) {
+    const prev = document.getElementById(`cell-${selected}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  selected = pid;
+  const cell = document.getElementById(`cell-${pid}`);
+  if (cell) cell.classList.add('selected');
+
+  const asgn = assignments[pid];
+  const body = document.getElementById('assign-body');
+  body.innerHTML = `
+    <div class="assign-body">
+      <div style="padding:14px 18px 0">
+        <div class="sel-pallet">${pid}</div>
+        <div class="sel-sub">${asgn ? 'Currently assigned — update or clear below' : 'No product assigned yet'}</div>
+      </div>
+      <div style="padding:0 18px 16px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.5px;color:#f5c800;text-transform:uppercase;margin-bottom:10px">Primary Product</div>
+        <div class="afield">
+          <label>SKU</label>
+          <div class="suggest-wrap">
+            <input id="a-sku" type="text" placeholder="e.g. MB-REC-A4" value="${asgn?.sku||''}"
+              oninput="onSkuInput('a-sku','suggest-list','a-name')" autocomplete="off">
+            <div class="suggest-list" id="suggest-list"></div>
+          </div>
+        </div>
+        <div class="afield">
+          <label>Product Name</label>
+          <input id="a-name" type="text" placeholder="e.g. Medium Rectangle Pine" value="${asgn?.product_name||''}">
+        </div>
+
+        <div style="font-size:10px;font-weight:800;letter-spacing:.5px;color:#aaa;text-transform:uppercase;margin:12px 0 10px;border-top:1px solid #f0f0f0;padding-top:12px">
+          Extra SKU <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — for mixed pallets)</span>
+        </div>
+        <div class="afield">
+          <label>SKU 2</label>
+          <div class="suggest-wrap">
+            <input id="a-sku2" type="text" placeholder="Second SKU if mixed" value="${asgn?.sku2||''}"
+              oninput="onSkuInput('a-sku2','suggest-list2','a-name2')" autocomplete="off">
+            <div class="suggest-list" id="suggest-list2"></div>
+          </div>
+        </div>
+        <div class="afield">
+          <label>Product Name 2</label>
+          <input id="a-name2" type="text" placeholder="Second product name" value="${asgn?.product_name2||''}">
+        </div>
+        <div class="afield">
+          <label>SKU 3</label>
+          <div class="suggest-wrap">
+            <input id="a-sku3" type="text" placeholder="Third SKU if needed" value="${asgn?.sku3||''}"
+              oninput="onSkuInput('a-sku3','suggest-list3','a-name3')" autocomplete="off">
+            <div class="suggest-list" id="suggest-list3"></div>
+          </div>
+        </div>
+        <div class="afield">
+          <label>Product Name 3</label>
+          <input id="a-name3" type="text" placeholder="Third product name" value="${asgn?.product_name3||''}">
+        </div>
+
+        <div style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:4px">
+          <div class="afield">
+            <label>Your Name</label>
+            <input id="a-who" type="text" placeholder="e.g. Yuvi" value="${getSavedUser()}">
+          </div>
+        </div>
+        <button class="assign-btn" onclick="saveAssignment()">
+          ${asgn ? '✓ Update Assignment' : '+ Assign Product'}
+        </button>
+        ${asgn ? '<button class="clear-btn" onclick="clearAssignment()">✕ Remove Assignment</button>' : ''}
+      </div>
+    </div>`;
+}
+
+// ── SKU suggestions ───────────────────────────────────────────────────────────
+function onSkuInput(skuId, listId, nameId) {
+  const q    = document.getElementById(skuId).value.toLowerCase();
+  const list = document.getElementById(listId);
+  if (!q) { list.classList.remove('open'); return; }
+  const matches = allSkus.filter(s =>
+    s.sku.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { list.classList.remove('open'); return; }
+  list.innerHTML = matches.map(s => `
+    <div class="suggest-item" onclick="pickSku('${skuId}','${listId}','${nameId}','${s.sku}','${s.name.replace(/'/g,"\\'")}')">
+      <div class="suggest-sku">${s.sku}</div>
+      <div class="suggest-name">${s.name}</div>
+    </div>`).join('');
+  list.classList.add('open');
+}
+
+function pickSku(skuId, listId, nameId, sku, name) {
+  document.getElementById(skuId).value  = sku;
+  document.getElementById(nameId).value = name;
+  document.getElementById(listId).classList.remove('open');
+}
+
+// Close suggestions when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.suggest-wrap')) {
+    document.querySelectorAll('.suggest-list').forEach(l => l.classList.remove('open'));
+  }
+});
+
+// ── Save / clear ──────────────────────────────────────────────────────────────
+async function saveAssignment() {
+  if (!selected) return;
+  const sku   = document.getElementById('a-sku').value.trim();
+  const name  = document.getElementById('a-name').value.trim();
+  const sku2  = document.getElementById('a-sku2').value.trim();
+  const name2 = document.getElementById('a-name2').value.trim();
+  const sku3  = document.getElementById('a-sku3').value.trim();
+  const name3 = document.getElementById('a-name3').value.trim();
+  const who   = document.getElementById('a-who').value.trim() || 'Staff';
+  if (!sku)  { alert('Please enter a SKU.'); return; }
+  if (!name) { alert('Please enter a product name.'); return; }
+  setSavedUser(who);
+
+  const r = await fetch(`/api/locations/${encodeURIComponent(selected)}`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      sku, product_name: name,
+      sku2, product_name2: name2,
+      sku3, product_name3: name3,
+      assigned_by: who
+    }),
+  });
+  if (!r.ok) { alert('Save failed.'); return; }
+
+  assignments[selected] = {pallet_id: selected, sku, product_name: name,
+                            sku2, product_name2: name2, sku3, product_name3: name3};
+  buildSkuList();
+  renderGrid();
+  document.getElementById(`cell-${selected}`)?.classList.add('selected');
+  updateStats();
+  selectPallet(selected);
+  const label = [sku, sku2, sku3].filter(Boolean).join(' + ');
+  showToast(`✓ ${selected} → ${label}`);
+}
+
+async function clearAssignment() {
+  if (!selected) return;
+  if (!confirm(`Remove assignment from ${selected}?`)) return;
+
+  await fetch(`/api/locations/${encodeURIComponent(selected)}`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({sku: '', product_name: '', assigned_by: 'Staff'}),
+  });
+
+  delete assignments[selected];
+  buildSkuList();
+  renderGrid();
+  document.getElementById(`cell-${selected}`)?.classList.add('selected');
+  updateStats();
+  selectPallet(selected);
+  showToast('Assignment removed');
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const total      = pallets.length;
+  const assigned   = Object.keys(assignments).length;
+  const unassigned = total - assigned;
+  const skus       = new Set(Object.values(assignments).map(a => a.sku)).size;
+  const pct        = total ? Math.round(assigned / total * 100) : 0;
+
+  document.getElementById('pb-count').textContent   = `${assigned} / ${total} assigned (${pct}%)`;
+  document.getElementById('pb-fill').style.width    = pct + '%';
+  document.getElementById('st-total').textContent   = total;
+  document.getElementById('st-assigned').textContent= assigned;
+  document.getElementById('st-unassigned').textContent = unassigned;
+  document.getElementById('st-skus').textContent    = skus;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+async function syncToWarehouse() {
+  const btn = document.getElementById('sync-btn');
+  btn.textContent = '⟳ Syncing…';
+  btn.disabled = true;
+  const r = await fetch('/api/locations/sync', { method: 'POST' });
+  btn.disabled = false;
+  if (!r.ok) { btn.textContent = '✕ Sync failed'; return; }
+  const d = await r.json();
+  btn.textContent = `✓ Synced ${d.updated} pallets`;
+  btn.style.background = 'rgba(39,174,96,.35)';
+  showToast(`✓ ${d.updated} L1 pallets updated in warehouse map`);
+  setTimeout(() => {
+    btn.textContent = '⟳ Sync Names & SKUs to Warehouse Map';
+    btn.style.background = '';
+  }, 4000);
+}
+
+function getSavedUser() { return localStorage.getItem('mb_who') || ''; }
+function setSavedUser(n){ localStorage.setItem('mb_who', n); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pallet Sheet — Memory Block</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#161b22;border-bottom:1px solid #30363d;flex-shrink:0}
+.topbar h1{font-size:15px;font-weight:600;color:#f0f6fc;margin-right:4px}
+.topbar .badge{font-size:11px;background:#21262d;color:#8b949e;padding:2px 7px;border-radius:10px;border:1px solid #30363d}
+.btn{padding:5px 12px;border-radius:6px;border:1px solid #30363d;cursor:pointer;font-size:12px;font-weight:500;transition:.15s}
+.btn-nav{background:#21262d;color:#c9d1d9}
+.btn-nav:hover{background:#30363d}
+.btn-sync{background:#238636;border-color:#2ea043;color:#fff}
+.btn-sync:hover{background:#2ea043}
+.btn-sync:disabled{background:#1c3829;color:#3fb950;cursor:default;opacity:.6}
+.btn-reset{background:#21262d;color:#8b949e}
+.btn-reset:hover{background:#30363d;color:#c9d1d9}
+.spacer{flex:1}
+#sync-count{font-size:11px;color:#f0a040;display:none}
+#status{font-size:11px;color:#8b949e}
+
+/* ── Filters ── */
+.filters{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;flex-shrink:0;flex-wrap:wrap}
+.filters label{font-size:11px;color:#8b949e}
+.filters select,.filters input[type=text]{background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:5px;padding:4px 8px;font-size:12px;outline:none}
+.filters select:focus,.filters input:focus{border-color:#58a6ff}
+.filters .sep{width:1px;height:18px;background:#30363d}
+
+/* ── Table wrapper ── */
+.tbl-wrap{flex:1;overflow:auto;position:relative}
+
+/* ── Spreadsheet table ── */
+table{border-collapse:collapse;min-width:100%;white-space:nowrap}
+thead{position:sticky;top:0;z-index:10}
+thead th{background:#161b22;border-bottom:2px solid #30363d;border-right:1px solid #21262d;padding:6px 8px;font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;user-select:none}
+thead th.sticky{position:sticky;left:0;z-index:20;background:#161b22}
+thead th.sticky2{position:sticky;left:90px;z-index:20;background:#161b22}
+
+tbody tr{border-bottom:1px solid #21262d}
+tbody tr:hover td{background:rgba(88,166,255,.04)}
+tbody tr.dirty td{background:rgba(240,160,64,.06)!important}
+tbody tr.dirty td.sticky{background:#1a1710!important}
+tbody tr.dirty td.sticky2{background:#1a1710!important}
+tbody tr.saved-flash td{background:rgba(46,160,67,.15)!important;transition:background .4s}
+
+td{border-right:1px solid #21262d;padding:0;vertical-align:middle}
+td.sticky{position:sticky;left:0;z-index:5;background:#0d1117}
+td.sticky2{position:sticky;left:90px;z-index:5;background:#0d1117}
+
+/* level colour strips */
+tr[data-level="1"] td.sticky{border-left:3px solid #58a6ff}
+tr[data-level="2"] td.sticky{border-left:3px solid #a371f7}
+tr[data-level="3"] td.sticky{border-left:3px solid #f0a040}
+
+/* row group header */
+tr.section-hdr td{background:#13181f;color:#8b949e;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 10px;border-top:2px solid #30363d;border-bottom:1px solid #30363d}
+
+/* cells */
+.cell-inner{display:flex;align-items:center;padding:0 6px;min-height:30px}
+.cell-loc{font-family:monospace;font-size:12px;color:#c9d1d9;min-width:90px;padding:5px 8px}
+.lv-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;line-height:1.6}
+.lv-1{background:rgba(88,166,255,.15);color:#58a6ff}
+.lv-2{background:rgba(163,113,247,.15);color:#a371f7}
+.lv-3{background:rgba(240,160,64,.15);color:#f0a040}
+
+td input,td select{width:100%;background:transparent;border:none;color:#c9d1d9;font-size:12px;padding:5px 8px;outline:none;min-height:30px;font-family:inherit}
+td input:focus,td select:focus{background:#1c2128;border:none;outline:2px solid #58a6ff;outline-offset:-2px;border-radius:0}
+td input[type=number]{-moz-appearance:textfield;text-align:right;padding-right:8px}
+td input[type=number]::-webkit-inner-spin-button{opacity:.4}
+td input[readonly]{color:#8b949e;cursor:default}
+
+/* fill cell colour */
+.fill-hi{color:#3fb950}
+.fill-mid{color:#f0a040}
+.fill-lo{color:#f85149}
+
+.no-data{text-align:center;padding:60px;color:#8b949e;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📋 Pallet Sheet</h1>
+  <span class="badge" id="row-count">— rows</span>
+  <div class="sep" style="width:1px;height:18px;background:#30363d"></div>
+  <button class="btn btn-nav" onclick="window.location.href='/'">🗺 3D Map</button>
+  <button class="btn btn-nav" onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+  <button class="btn btn-nav" onclick="window.location.href='/locations'">📍 Locations</button>
+  <div class="spacer"></div>
+  <span id="sync-count"></span>
+  <span id="status"></span>
+  <button class="btn btn-reset" id="reset-btn" onclick="resetChanges()" style="display:none">↩ Reset</button>
+  <button class="btn btn-sync" id="sync-btn" onclick="syncChanges()" disabled>↑ Sync Changes</button>
+  <button class="btn btn-nav" onclick="logout()" style="border-color:rgba(231,76,60,.3);color:rgba(231,76,60,.8)">🔒 Lock</button>
+</div>
+
+<div class="filters">
+  <label>Section</label>
+  <select id="f-section" onchange="applyFilters()">
+    <option value="">All sections</option>
+    <option>A</option><option>B</option><option>C</option>
+    <option>D</option><option>E</option><option>F</option>
+  </select>
+  <label>Level</label>
+  <select id="f-level" onchange="applyFilters()">
+    <option value="">All levels</option>
+    <option value="0">L1</option>
+    <option value="1">L2</option>
+    <option value="2">L3</option>
+  </select>
+  <div class="sep"></div>
+  <label>Search</label>
+  <input type="text" id="f-search" placeholder="name, SKU, location…" oninput="applyFilters()" style="width:180px">
+  <div class="sep"></div>
+  <label><input type="checkbox" id="f-filled" onchange="applyFilters()"> Hide empty</label>
+</div>
+
+<div class="tbl-wrap">
+<table id="sheet-table">
+  <thead>
+    <tr>
+      <th class="sticky" style="min-width:90px">Location</th>
+      <th class="sticky2" style="min-width:42px">Lvl</th>
+      <th style="min-width:110px">Pallet Label</th>
+      <th style="min-width:180px">Product Name</th>
+      <th style="min-width:100px">SKU</th>
+      <th style="min-width:80px">Fill %</th>
+      <th style="min-width:70px">Boxes</th>
+      <th style="min-width:70px">Units/Box</th>
+      <th style="min-width:100px">SKU 2</th>
+      <th style="min-width:70px">Boxes 2</th>
+      <th style="min-width:70px">UPB 2</th>
+      <th style="min-width:100px">SKU 3</th>
+      <th style="min-width:70px">Boxes 3</th>
+      <th style="min-width:70px">UPB 3</th>
+      <th style="min-width:220px">Notes</th>
+    </tr>
+  </thead>
+  <tbody id="sheet-body">
+    <tr><td colspan="15" class="no-data">Loading…</td></tr>
+  </tbody>
+</table>
+</div>
+
+<script>
+let allPallets = [];
+let changes = {};   // pid -> {field: newValue}
+let sectionOrder = ['A','B','C','D','E','F'];
+
+async function load() {
+  setStatus('Loading…');
+  try {
+    const r = await fetch('/api/pallets');
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    // only L1/L2/L3, exclude printers
+    allPallets = data.filter(p => !p.is_printer && [0,1,2].includes(p.level));
+    allPallets.sort((a,b) => {
+      const si = sectionOrder.indexOf(a.section) - sectionOrder.indexOf(b.section);
+      if (si !== 0) return si;
+      if (a.segment !== b.segment) return a.segment - b.segment;
+      if (a.slot !== b.slot) return a.slot - b.slot;
+      return a.level - b.level;
+    });
+    changes = {};
+    renderTable(allPallets);
+    setStatus('');
+  } catch(e) {
+    setStatus('⚠ Load failed: ' + e.message);
+  }
+}
+
+function applyFilters() {
+  const sec = document.getElementById('f-section').value;
+  const lv  = document.getElementById('f-level').value;
+  const q   = document.getElementById('f-search').value.toLowerCase().trim();
+  const hidEmpty = document.getElementById('f-filled').checked;
+
+  const filtered = allPallets.filter(p => {
+    if (sec !== '' && p.section !== sec) return false;
+    if (lv  !== '' && p.level  !== +lv ) return false;
+    if (hidEmpty && !p.fill && !p.units && !p.sku) return false;
+    if (q) {
+      const hay = [p.id,p.name,p.sku,p.sku2,p.sku3,p.pallet_label,p.notes].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  renderTable(filtered);
+}
+
+function renderTable(pallets) {
+  const tbody = document.getElementById('sheet-body');
+  document.getElementById('row-count').textContent = pallets.length + ' rows';
+  if (!pallets.length) {
+    tbody.innerHTML = '<tr><td colspan="15" class="no-data">No pallets match filters</td></tr>';
+    return;
+  }
+
+  let html = '';
+  let lastSection = null;
+  for (const p of pallets) {
+    if (p.section !== lastSection) {
+      html += `<tr class="section-hdr"><td colspan="15">Section ${p.section}</td></tr>`;
+      lastSection = p.section;
+    }
+    const isDirty = !!changes[p.id];
+    const lvCls = `lv-${p.level+1}`;
+    const fillCls = p.fill >= 70 ? 'fill-hi' : p.fill >= 30 ? 'fill-mid' : 'fill-lo';
+    // merge pending changes with pallet data
+    const d = Object.assign({}, p, changes[p.id] || {});
+
+    html += `<tr data-pid="${p.id}" data-level="${p.level}" class="${isDirty?'dirty':''}">
+      <td class="sticky"><div class="cell-inner cell-loc">${p.id}</div></td>
+      <td class="sticky2"><div class="cell-inner"><span class="lv-badge ${lvCls}">L${p.level+1}</span></div></td>
+      <td><input type="text" value="${esc(d.pallet_label||'')}" data-pid="${p.id}" data-field="pallet_label" onchange="mark(this)"></td>
+      <td><input type="text" value="${esc(d.name||'')}" data-pid="${p.id}" data-field="name" onchange="mark(this)"></td>
+      <td><input type="text" value="${esc(d.sku||'')}" data-pid="${p.id}" data-field="sku" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.fill||0}" min="0" max="100" data-pid="${p.id}" data-field="fill" onchange="mark(this)" class="${fillCls}"></td>
+      <td><input type="number" value="${d.units||0}" min="0" data-pid="${p.id}" data-field="units" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.units_per_box||0}" min="0" data-pid="${p.id}" data-field="units_per_box" onchange="mark(this)"></td>
+      <td><input type="text" value="${esc(d.sku2||'')}" data-pid="${p.id}" data-field="sku2" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.units2||0}" min="0" data-pid="${p.id}" data-field="units2" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.units_per_box2||0}" min="0" data-pid="${p.id}" data-field="units_per_box2" onchange="mark(this)"></td>
+      <td><input type="text" value="${esc(d.sku3||'')}" data-pid="${p.id}" data-field="sku3" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.units3||0}" min="0" data-pid="${p.id}" data-field="units3" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.units_per_box3||0}" min="0" data-pid="${p.id}" data-field="units_per_box3" onchange="mark(this)"></td>
+      <td><input type="text" value="${esc(d.notes||'')}" data-pid="${p.id}" data-field="notes" onchange="mark(this)"></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  updateSyncBtn();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function mark(input) {
+  const pid   = input.dataset.pid;
+  const field = input.dataset.field;
+  const val   = input.value;
+  if (!changes[pid]) changes[pid] = {};
+  changes[pid][field] = val;
+  input.closest('tr').classList.add('dirty');
+  updateSyncBtn();
+}
+
+function updateSyncBtn() {
+  const n = Object.keys(changes).length;
+  const btn = document.getElementById('sync-btn');
+  const cnt = document.getElementById('sync-count');
+  const rst = document.getElementById('reset-btn');
+  if (n > 0) {
+    btn.disabled = false;
+    cnt.style.display = '';
+    cnt.textContent = n + ' unsaved change' + (n===1?'':'s');
+    rst.style.display = '';
+  } else {
+    btn.disabled = true;
+    cnt.style.display = 'none';
+    rst.style.display = 'none';
+  }
+}
+
+async function syncChanges() {
+  const pids = Object.keys(changes);
+  if (!pids.length) return;
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true;
+  setStatus(`Saving ${pids.length} rows…`);
+
+  let ok = 0, fail = 0;
+  for (const pid of pids) {
+    try {
+      const r = await fetch(`/api/pallets/${encodeURIComponent(pid)}`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(changes[pid])
+      });
+      if (!r.ok) throw new Error(r.status);
+      // update local pallet
+      const idx = allPallets.findIndex(p => p.id === pid);
+      if (idx >= 0) Object.assign(allPallets[idx], changes[pid]);
+      delete changes[pid];
+      // flash the row
+      const row = document.querySelector(`tr[data-pid="${pid}"]`);
+      if (row) { row.classList.remove('dirty'); row.classList.add('saved-flash'); setTimeout(()=>row.classList.remove('saved-flash'),800); }
+      ok++;
+    } catch(e) {
+      fail++;
+    }
+  }
+  updateSyncBtn();
+  setStatus(fail ? `⚠ ${fail} failed, ${ok} saved` : `✓ All ${ok} rows saved`);
+  setTimeout(()=>setStatus(''), 4000);
+}
+
+function resetChanges() {
+  changes = {};
+  applyFilters();
+  setStatus('Changes discarded');
+  setTimeout(()=>setStatus(''), 2000);
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+async function logout() {
+  await fetch('/logout', {method:'POST'});
+  window.location.href = '/';
+}
+
+load();
+</script>
+</body>
+</html>
