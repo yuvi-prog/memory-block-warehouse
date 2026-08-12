@@ -655,8 +655,7 @@ def _poll_unleashed():
     now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        resp  = get_completed_orders(start, page=1)
-        items = resp.get('Items') or []
+        items = get_completed_orders(start)
         log.info(f'Unleashed poll: {len(items)} completed orders since {start}')
     except Exception as e:
         log.error(f'Unleashed poll failed: {e}')
@@ -726,6 +725,11 @@ def api_sync_locations():
 @require_auth
 def api_order_log():
     return jsonify(get_order_log())
+
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'}), 200
 
 
 if __name__ == '__main__':

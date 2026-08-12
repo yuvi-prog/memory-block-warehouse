@@ -26,6 +26,12 @@ def _sign(api_key: str, query_string: str) -> str:
     ).decode('utf-8')
 
 
+import time as _time
+
+TIMEOUT = 10   # seconds per request
+RETRIES = 3    # attempts before giving up
+
+
 def _get(path: str, params: dict = None) -> dict:
     api_id  = os.environ.get('UNLEASHED_API_ID',  '').strip()
     api_key = os.environ.get('UNLEASHED_API_KEY', '').strip()
@@ -43,25 +49,47 @@ def _get(path: str, params: dict = None) -> dict:
     req.add_header('Content-Type',       'application/json')
     req.add_header('client-type',        'MemoryBlockWarehouse/1.0')
 
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        body = ''
-        try: body = e.read().decode()
-        except Exception: pass
-        raise RuntimeError(f'Unleashed API HTTP {e.code}: {body[:300]}')
-    except Exception as e:
-        raise RuntimeError(f'Unleashed API error: {e}')
+    last_err = None
+    for attempt in range(1, RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            body = ''
+            try: body = e.read().decode()
+            except Exception: pass
+            raise RuntimeError(f'Unleashed API HTTP {e.code}: {body[:300]}')
+        except Exception as e:
+            last_err = e
+            if attempt < RETRIES:
+                wait = 2 ** attempt   # 2s, 4s
+                log.warning(f'Unleashed API attempt {attempt} failed ({e}), retrying in {wait}s…')
+                _time.sleep(wait)
+
+    raise RuntimeError(f'Unleashed API error after {RETRIES} attempts: {last_err}')
 
 
-def get_completed_orders(start_date: str, page: int = 1) -> dict:
+def get_completed_orders(start_date: str) -> list:
     """
-    Fetch completed sales orders on or after start_date ('yyyy-MM-dd').
-    Returns Unleashed response with 'Items' list and 'Pagination' dict.
+    Fetch ALL completed sales orders on or after start_date ('yyyy-MM-dd').
+    Walks all pages and returns the combined Items list.
     """
-    return _get(f'/SalesOrders/{page}', {
-        'orderStatus': 'Completed',
-        'startDate':   start_date,
-        'pageSize':    '200',
-    })
+    all_items = []
+    page = 1
+    while True:
+        resp  = _get(f'/SalesOrders/{page}', {
+            'orderStatus': 'Completed',
+            'startDate':   start_date,
+            'pageSize':    '200',
+        })
+        items = resp.get('Items') or []
+        all_items.extend(items)
+
+        pagination   = resp.get('Pagination') or {}
+        total_pages  = int(pagination.get('NumberOfPages') or 1)
+        log.info(f'Unleashed: fetched page {page}/{total_pages} ({len(items)} orders)')
+        if page >= total_pages:
+            break
+        page += 1
+
+    return all_items
