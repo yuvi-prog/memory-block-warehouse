@@ -732,6 +732,42 @@ def health():
     return jsonify({'status': 'ok'}), 200
 
 
+# ── Google Sheets sync ────────────────────────────────────────────────────────
+
+@app.route('/api/sheets/push', methods=['POST'])
+@require_auth
+def api_sheets_push():
+    try:
+        from google_sheets import push_to_sheet
+        pallets = get_all_pallets()
+        count   = push_to_sheet(pallets)
+        return jsonify({'success': True, 'rows': count})
+    except Exception as e:
+        log.error(f'Sheets push failed: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sheets/pull', methods=['POST'])
+@require_auth
+def api_sheets_pull():
+    try:
+        from google_sheets import pull_from_sheet
+        updates = pull_from_sheet()
+        allowed = {'pallet_label','name','sku','sku2','sku3','fill','units',
+                   'units_per_box','units2','units_per_box2','units3',
+                   'units_per_box3','notes','refurbished_units'}
+        ok = 0
+        for row in updates:
+            pid     = row.pop('pid', '')
+            cleaned = {k: v for k, v in row.items() if k in allowed}
+            if pid and update_pallet(pid, cleaned, 'Google Sheet Sync'):
+                ok += 1
+        return jsonify({'success': True, 'updated': ok, 'total': len(updates)})
+    except Exception as e:
+        log.error(f'Sheets pull failed: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT',5000))
     print(f'\n  Memory Block Warehouse: http://localhost:{port}\n')

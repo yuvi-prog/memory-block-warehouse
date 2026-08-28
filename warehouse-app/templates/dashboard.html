@@ -135,6 +135,8 @@ tr:last-child td{border-bottom:none}
     <a class="btn btn-export" href="/locations" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15)">📍 Locations</a>
     <a class="btn btn-export" href="/sheet" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15)">📋 Sheet</a>
     <button class="btn btn-refresh" id="poll-btn" onclick="triggerPoll()" title="Fetch latest completed orders from Unleashed now">⟳ Sync Unleashed</button>
+    <button class="btn btn-refresh" id="sheets-push-btn" onclick="sheetsPush()" title="Export current warehouse data to Google Sheet" style="border-color:rgba(52,168,83,.4);color:rgba(52,168,83,.9)">↑ Export to Sheet</button>
+    <button class="btn btn-refresh" id="sheets-pull-btn" onclick="sheetsPull()" title="Import edits from Google Sheet into warehouse" style="border-color:rgba(66,133,244,.4);color:rgba(66,133,244,.9)">↓ Import from Sheet</button>
     <a class="btn btn-back" href="/">← 3D View</a>
   </div>
 </header>
@@ -657,7 +659,7 @@ function copyId(id, btn) {
 function renderOrderLog() {
   const badge = document.getElementById('order-badge');
   const body  = document.getElementById('order-body');
-  badge.textContent = orderLog.length;
+  badge.textContent = `${Math.min(orderLog.length, 8)} of ${orderLog.length}`;
 
   if (!orderLog.length) {
     body.innerHTML = '<div class="empty-msg" style="color:#bbb">No orders processed yet — will populate once Unleashed credentials are set and units per box is filled in.</div>';
@@ -670,7 +672,7 @@ function renderOrderLog() {
       <th>Processed</th><th>Skipped</th><th>Alerts</th><th>Notes</th>
     </tr></thead>
     <tbody>
-      ${orderLog.slice(0, 30).map(o => {
+      ${orderLog.slice(0, 8).map(o => {
         const hasSkips   = o.lines_skipped > 0;
         const hasAlerts  = o.alerts_fired  > 0;
         return `<tr>
@@ -685,6 +687,48 @@ function renderOrderLog() {
       }).join('')}
     </tbody>
   </table>`;
+}
+
+// ── Google Sheets sync ────────────────────────────────────────────────────────
+async function sheetsPush() {
+  const btn = document.getElementById('sheets-push-btn');
+  btn.textContent = '↑ Exporting…'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/sheets/push', {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+      btn.textContent = `✓ Exported ${d.rows} rows`;
+      btn.style.color = 'rgba(52,168,83,1)';
+    } else {
+      btn.textContent = '⚠ Export failed';
+      btn.style.color = '#e74c3c';
+      console.error(d.error);
+    }
+  } catch(e) {
+    btn.textContent = '⚠ Error'; btn.style.color = '#e74c3c';
+  }
+  setTimeout(() => { btn.textContent = '↑ Export to Sheet'; btn.style.color = ''; btn.disabled = false; }, 4000);
+}
+
+async function sheetsPull() {
+  const btn = document.getElementById('sheets-pull-btn');
+  btn.textContent = '↓ Importing…'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/sheets/pull', {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+      btn.textContent = `✓ Updated ${d.updated} pallets`;
+      btn.style.color = 'rgba(66,133,244,1)';
+      setTimeout(load, 1500);
+    } else {
+      btn.textContent = '⚠ Import failed';
+      btn.style.color = '#e74c3c';
+      console.error(d.error);
+    }
+  } catch(e) {
+    btn.textContent = '⚠ Error'; btn.style.color = '#e74c3c';
+  }
+  setTimeout(() => { btn.textContent = '↓ Import from Sheet'; btn.style.color = ''; btn.disabled = false; }, 4000);
 }
 
 // ── Unleashed manual poll ─────────────────────────────────────────────────────

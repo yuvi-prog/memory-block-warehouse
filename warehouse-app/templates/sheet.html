@@ -139,6 +139,7 @@ td input[readonly]{color:#8b949e;cursor:default}
       <th style="min-width:70px">Boxes 3</th>
       <th style="min-width:70px">UPB 3</th>
       <th style="min-width:220px">Notes</th>
+      <th style="min-width:90px">Refurb Units</th>
     </tr>
   </thead>
   <tbody id="sheet-body">
@@ -231,6 +232,7 @@ function renderTable(pallets) {
       <td><input type="number" value="${d.units3||0}" min="0" data-pid="${p.id}" data-field="units3" onchange="mark(this)"></td>
       <td><input type="number" value="${d.units_per_box3||0}" min="0" data-pid="${p.id}" data-field="units_per_box3" onchange="mark(this)"></td>
       <td><input type="text" value="${esc(d.notes||'')}" data-pid="${p.id}" data-field="notes" onchange="mark(this)"></td>
+      <td><input type="number" value="${d.refurbished_units||0}" min="0" data-pid="${p.id}" data-field="refurbished_units" onchange="mark(this)"></td>
     </tr>`;
   }
   tbody.innerHTML = html;
