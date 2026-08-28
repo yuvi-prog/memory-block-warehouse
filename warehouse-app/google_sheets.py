@@ -13,8 +13,10 @@ SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', '')
 
 HEADERS = [
     'Location', 'Level', 'Pallet Label', 'Product Name', 'SKU',
-    'Fill %', 'Boxes', 'Units/Box', 'SKU 2', 'Boxes 2', 'UPB 2',
-    'SKU 3', 'Boxes 3', 'UPB 3', 'Notes', 'Refurb Units',
+    'Fill %', 'Boxes', 'Units/Box',
+    'SKU 2', 'Product Name 2', 'Boxes 2', 'UPB 2',
+    'SKU 3', 'Product Name 3', 'Boxes 3', 'UPB 3',
+    'Notes', 'Refurb Units',
 ]
 
 LEVEL_MAP = {0: 'L1', 1: 'L2', 2: 'L3'}
@@ -23,10 +25,15 @@ LEVEL_MAP = {0: 'L1', 1: 'L2', 2: 'L3'}
 def _client():
     import gspread
     from google.oauth2.service_account import Credentials
-    raw = os.environ.get('GOOGLE_CREDENTIALS_JSON', '')
+    import base64
+    b64 = os.environ.get('GOOGLE_CREDENTIALS_B64', '').strip()
+    if b64:
+        raw = base64.b64decode(b64).decode('utf-8')
+    else:
+        raw = os.environ.get('GOOGLE_CREDENTIALS_JSON', '').strip().lstrip('﻿')
     if not raw:
-        raise ValueError('GOOGLE_CREDENTIALS_JSON env var not set')
-    info  = json.loads(raw)
+        raise ValueError('GOOGLE_CREDENTIALS_B64 or GOOGLE_CREDENTIALS_JSON env var not set')
+    info = json.loads(raw)
     creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     return gspread.authorize(creds)
 
@@ -38,10 +45,11 @@ def _sheet():
     return _client().open_by_key(sid).sheet1
 
 
-def push_to_sheet(pallets: list) -> int:
+def push_to_sheet(pallets: list, assignments: dict = None) -> int:
     """Overwrite the Google Sheet with current warehouse data. Returns row count."""
     ws = _sheet()
     ws.clear()
+    assignments = assignments or {}
 
     rows = [HEADERS]
     for p in pallets:
@@ -49,19 +57,23 @@ def push_to_sheet(pallets: list) -> int:
             continue
         if p.get('level') not in (0, 1, 2):
             continue
+        pid = p.get('id', '')
+        loc = assignments.get(pid, {})
         rows.append([
-            p.get('id', ''),
+            pid,
             LEVEL_MAP.get(p.get('level'), ''),
             p.get('pallet_label', '') or '',
-            p.get('name', '') or '',
-            p.get('sku', '') or '',
+            p.get('name', '') or loc.get('product_name', '') or '',
+            p.get('sku', '') or loc.get('sku', '') or '',
             p.get('fill', 0) or 0,
             p.get('units', 0) or 0,
             p.get('units_per_box', 0) or 0,
-            p.get('sku2', '') or '',
+            p.get('sku2', '') or loc.get('sku2', '') or '',
+            loc.get('product_name2', '') or '',
             p.get('units2', 0) or 0,
             p.get('units_per_box2', 0) or 0,
-            p.get('sku3', '') or '',
+            p.get('sku3', '') or loc.get('sku3', '') or '',
+            loc.get('product_name3', '') or '',
             p.get('units3', 0) or 0,
             p.get('units_per_box3', 0) or 0,
             p.get('notes', '') or '',
@@ -113,13 +125,15 @@ def pull_from_sheet() -> list:
             'units':            n(6),
             'units_per_box':    n(7),
             'sku2':             v(8),
-            'units2':           n(9),
-            'units_per_box2':   n(10),
-            'sku3':             v(11),
-            'units3':           n(12),
-            'units_per_box3':   n(13),
-            'notes':            v(14),
-            'refurbished_units': n(15),
+            'product_name2':    v(9),
+            'units2':           n(10),
+            'units_per_box2':   n(11),
+            'sku3':             v(12),
+            'product_name3':    v(13),
+            'units3':           n(14),
+            'units_per_box3':   n(15),
+            'notes':            v(16),
+            'refurbished_units': n(17),
         })
 
     log.info(f'Google Sheets pull: read {len(updates)} rows')

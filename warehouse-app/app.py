@@ -739,8 +739,9 @@ def health():
 def api_sheets_push():
     try:
         from google_sheets import push_to_sheet
-        pallets = get_all_pallets()
-        count   = push_to_sheet(pallets)
+        pallets     = get_all_pallets()
+        assignments = get_location_assignments()
+        count       = push_to_sheet(pallets, assignments)
         return jsonify({'success': True, 'rows': count})
     except Exception as e:
         log.error(f'Sheets push failed: {e}')
@@ -753,15 +754,33 @@ def api_sheets_pull():
     try:
         from google_sheets import pull_from_sheet
         updates = pull_from_sheet()
-        allowed = {'pallet_label','name','sku','sku2','sku3','fill','units',
-                   'units_per_box','units2','units_per_box2','units3',
-                   'units_per_box3','notes','refurbished_units'}
+        pallet_allowed = {'pallet_label','name','sku','sku2','sku3','fill','units',
+                          'units_per_box','units2','units_per_box2','units3',
+                          'units_per_box3','notes','refurbished_units'}
+        # Build level lookup from current pallets
+        level_lookup = {p['id']: p['level'] for p in get_all_pallets()}
         ok = 0
         for row in updates:
-            pid     = row.pop('pid', '')
-            cleaned = {k: v for k, v in row.items() if k in allowed}
-            if pid and update_pallet(pid, cleaned, 'Google Sheet Sync'):
-                ok += 1
+            pid = row.get('pid', '')
+            if not pid:
+                continue
+
+            # Update pallet table
+            cleaned = {k: v for k, v in row.items() if k in pallet_allowed}
+            update_pallet(pid, cleaned, 'Google Sheet Sync')
+
+            # For L1 pallets (level 0), also update location assignments (used by Unleashed)
+            if level_lookup.get(pid) == 0:
+                sku           = row.get('sku', '')
+                name          = row.get('name', '')
+                sku2          = row.get('sku2', '')
+                product_name2 = row.get('product_name2', '')
+                sku3          = row.get('sku3', '')
+                product_name3 = row.get('product_name3', '')
+                if sku or name:
+                    set_location_assignment(pid, sku, name, 'Sheet Sync',
+                                            sku2, product_name2, sku3, product_name3)
+            ok += 1
         return jsonify({'success': True, 'updated': ok, 'total': len(updates)})
     except Exception as e:
         log.error(f'Sheets pull failed: {e}')

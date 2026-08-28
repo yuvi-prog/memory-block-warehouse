@@ -96,6 +96,8 @@ td input[readonly]{color:#8b949e;cursor:default}
   <span id="status"></span>
   <button class="btn btn-reset" id="reset-btn" onclick="resetChanges()" style="display:none">↩ Reset</button>
   <button class="btn btn-sync" id="sync-btn" onclick="syncChanges()" disabled>↑ Sync Changes</button>
+  <button class="btn" id="gs-push-btn" onclick="gsPush()" style="background:#21262d;border-color:rgba(52,168,83,.5);color:rgba(52,168,83,.9)" title="Export warehouse data to Google Sheet">📤 Export to Google Sheet</button>
+  <button class="btn" id="gs-pull-btn" onclick="gsPull()" style="background:#21262d;border-color:rgba(66,133,244,.5);color:rgba(66,133,244,.9)" title="Import edits from Google Sheet">📥 Import from Google Sheet</button>
   <button class="btn btn-nav" onclick="logout()" style="border-color:rgba(231,76,60,.3);color:rgba(231,76,60,.8)">🔒 Lock</button>
 </div>
 
@@ -317,6 +319,52 @@ function setStatus(msg) {
 async function logout() {
   await fetch('/logout', {method:'POST'});
   window.location.href = '/';
+}
+
+async function gsPush() {
+  const btn = document.getElementById('gs-push-btn');
+  btn.textContent = '⏳ Exporting…'; btn.disabled = true;
+  setStatus('Exporting to Google Sheet…');
+  try {
+    const r = await fetch('/api/sheets/push', {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+      setStatus(`✓ Exported ${d.rows} rows to Google Sheet`);
+      btn.textContent = `✓ ${d.rows} rows exported`;
+    } else {
+      setStatus('⚠ Export failed: ' + d.error);
+      btn.textContent = '📤 Export to Google Sheet';
+    }
+  } catch(e) {
+    setStatus('⚠ Export error');
+    btn.textContent = '📤 Export to Google Sheet';
+  }
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = '📤 Export to Google Sheet'; setStatus(''); }, 5000);
+}
+
+async function gsPull() {
+  const btn = document.getElementById('gs-pull-btn');
+  btn.textContent = '⏳ Importing…'; btn.disabled = true;
+  setStatus('Importing from Google Sheet…');
+  try {
+    const r = await fetch('/api/sheets/pull', {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+      setStatus(`✓ Updated ${d.updated} of ${d.total} pallets`);
+      btn.textContent = `✓ ${d.updated} pallets updated`;
+      changes = {};
+      await load();
+    } else {
+      setStatus('⚠ Import failed: ' + d.error);
+      btn.textContent = '📥 Import from Google Sheet';
+    }
+  } catch(e) {
+    setStatus('⚠ Import error');
+    btn.textContent = '📥 Import from Google Sheet';
+  }
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = '📥 Import from Google Sheet'; setStatus(''); }, 5000);
 }
 
 load();
