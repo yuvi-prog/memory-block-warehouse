@@ -1,4 +1,4 @@
-# deploy.ps1 — Commit, push to GitHub, and deploy to Railway in one step
+# deploy.ps1 — Commit and push to GitHub (Railway auto-deploys from GitHub)
 # Usage: .\deploy.ps1 "Your commit message"
 
 param(
@@ -12,7 +12,7 @@ git add -A
 
 $status = git status --porcelain
 if (-not $status) {
-    Write-Host "Nothing to commit — pushing and deploying anyway." -ForegroundColor Yellow
+    Write-Host "Nothing new to commit." -ForegroundColor Yellow
 } else {
     Write-Host "==> Committing: $Message" -ForegroundColor Cyan
     git commit -m $Message
@@ -23,10 +23,5 @@ Write-Host "==> Pushing to GitHub..." -ForegroundColor Cyan
 git push origin master
 if ($LASTEXITCODE -ne 0) { Write-Host "Push failed." -ForegroundColor Red; exit 1 }
 
-Write-Host "==> Deploying to Railway..." -ForegroundColor Cyan
-Set-Location "$PSScriptRoot\warehouse-app"
-railway up --detach
-if ($LASTEXITCODE -ne 0) { Write-Host "Railway deploy failed." -ForegroundColor Red; exit 1 }
-
 Write-Host ""
-Write-Host "Done! GitHub and Railway are both up to date." -ForegroundColor Green
+Write-Host "Done! Railway will auto-deploy from GitHub." -ForegroundColor Green
