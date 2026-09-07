@@ -478,7 +478,11 @@ def _process_order(order_num: str, customer: str, lines: list, raw_str: str,
         sku       = (product.get('ProductCode') or product.get('productCode') or '').strip()
         qty_units = float(line.get('OrderQuantity') or line.get('orderQuantity') or 0)
 
-        if not sku or qty_units <= 0:
+        if not sku:
+            skip_notes.append(f'line {lines.index(line)+1}: no SKU')
+            skipped += 1; continue
+        if qty_units <= 0:
+            skip_notes.append(f'{sku}: qty is 0')
             skipped += 1; continue
 
         sku_upper = sku.upper()
@@ -492,16 +496,17 @@ def _process_order(order_num: str, customer: str, lines: list, raw_str: str,
         if pid:
             pallet, above = get_pallet_with_above(pid)
             if not pallet:
-                skip_notes.append(f'{sku}: pallet {pid} not found')
+                skip_notes.append(f'{sku} ({prod_name}): pallet {pid} not found in DB')
                 skipped += 1; continue
 
             upb = int(pallet.get('units_per_box') or 0)
             if upb <= 0:
-                skip_notes.append(f'{sku} ({pid}): units_per_box not set')
+                skip_notes.append(f'{sku} ({prod_name}): units/box not set on pallet {pid}')
                 skipped += 1; continue
 
             boxes_to_deduct = round(qty_units / upb)
             if boxes_to_deduct <= 0:
+                skip_notes.append(f'{sku}: qty {int(qty_units)} units < 1 box ({upb} units/box)')
                 skipped += 1; continue
 
             current_units = int(pallet.get('units') or 0)
@@ -579,7 +584,7 @@ def _process_order(order_num: str, customer: str, lines: list, raw_str: str,
                     })
             continue
 
-        skip_notes.append(f'{sku}: no location assigned')
+        skip_notes.append(f'{sku} ({prod_name}): no location assigned')
         skipped += 1
 
     notes_str    = '; '.join(skip_notes) if skip_notes else ''
