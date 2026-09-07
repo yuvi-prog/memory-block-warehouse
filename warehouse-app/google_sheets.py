@@ -48,9 +48,9 @@ def _sheet():
 def push_to_sheet(pallets: list, assignments: dict = None) -> int:
     """Overwrite the Google Sheet with current warehouse data. Returns row count."""
     ws = _sheet()
-    ws.clear()
     assignments = assignments or {}
 
+    # Build rows first — if this fails, the sheet is untouched
     rows = [HEADERS]
     for p in pallets:
         if p.get('is_printer'):
@@ -80,8 +80,16 @@ def push_to_sheet(pallets: list, assignments: dict = None) -> int:
             p.get('refurbished_units', 0) or 0,
         ])
 
+    # Write new data first, then clear any stale rows below — avoids blank sheet on failure
     ws.update('A1', rows)
-    ws.format('A1:P1', {
+
+    # Clear rows beyond the new data range so old entries don't linger
+    existing_rows = ws.row_count
+    new_last_row = len(rows)
+    if existing_rows > new_last_row:
+        ws.batch_clear([f'A{new_last_row + 1}:R{existing_rows}'])
+
+    ws.format('A1:R1', {
         'textFormat': {'bold': True},
         'backgroundColor': {'red': 0.18, 'green': 0.18, 'blue': 0.18},
     })

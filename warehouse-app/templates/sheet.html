@@ -145,7 +145,7 @@ td input[readonly]{color:#8b949e;cursor:default}
     </tr>
   </thead>
   <tbody id="sheet-body">
-    <tr><td colspan="15" class="no-data">Loading…</td></tr>
+    <tr><td colspan="16" class="no-data">Loading…</td></tr>
   </tbody>
 </table>
 </div>
@@ -201,7 +201,7 @@ function renderTable(pallets) {
   const tbody = document.getElementById('sheet-body');
   document.getElementById('row-count').textContent = pallets.length + ' rows';
   if (!pallets.length) {
-    tbody.innerHTML = '<tr><td colspan="15" class="no-data">No pallets match filters</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="16" class="no-data">No pallets match filters</td></tr>';
     return;
   }
 
@@ -209,7 +209,7 @@ function renderTable(pallets) {
   let lastSection = null;
   for (const p of pallets) {
     if (p.section !== lastSection) {
-      html += `<tr class="section-hdr"><td colspan="15">Section ${p.section}</td></tr>`;
+      html += `<tr class="section-hdr"><td colspan="16">Section ${p.section}</td></tr>`;
       lastSection = p.section;
     }
     const isDirty = !!changes[p.id];
@@ -317,7 +317,7 @@ function setStatus(msg) {
 }
 
 async function logout() {
-  await fetch('/logout', {method:'POST'});
+  await fetch('/api/auth/logout', {method:'POST'});
   window.location.href = '/';
 }
 

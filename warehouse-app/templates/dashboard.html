@@ -266,7 +266,7 @@ async function load() {
     ]);
     if (!dr.ok) { showError(); return; }
     dashData   = await dr.json();
-    allPallets = (await pr.json()).filter(p => !p.is_printer);
+    allPallets = pr.ok ? (await pr.json()).filter(p => !p.is_printer) : [];
     snapshots  = sr.ok ? await sr.json() : [];
     orderLog   = or_.ok ? await or_.json() : [];
     render();
